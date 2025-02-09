@@ -1,11 +1,11 @@
-# Optimus UI
+# asaRacing UI
 
-Part of the Optimus Stack - A rapid application deployment framework
+Part of the asaRacing Stack - A rapid application deployment framework
 
 ## Version Compatibility
-- optimus-ui: v0.1.0
-- optimus-core: v0.1.0
-- optimus-api: v0.1.0
+- asaRacing-ui: v0.1.0
+- asaRacing-core: v0.1.0
+- asaRacing-api: v0.1.0
 
 ## Quick Start
 [Instructions]
@@ -14,4 +14,4 @@ Part of the Optimus Stack - A rapid application deployment framework
 [Configuration details]
 
 ## Integration Points
-[How this connects with other Optimus components]
+[How this connects with other asaRacing components]
