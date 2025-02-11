@@ -2,8 +2,6 @@
 import { useAppDispatch, useAppSelector } from './store/hooks'
 import { setUser, logout } from './store/features/authSlice'
 
-import Link from 'next/link'
-
 export default function Page() {
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.auth.user)
