@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider"
+import { Providers } from './providers'
 
 /* const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +29,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <>
-      <html lang="en" suppressHydrationWarning>
-        <head />
-        <body>
+    <html lang="en" suppressHydrationWarning>
+      <head />
+      <body>
+        <Providers>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -39,15 +40,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
             disableTransitionOnChange
           >
             <SidebarProvider>
-            <AppSidebar />
+              <AppSidebar />
               <main>
                 <SidebarTrigger />
                 {children}
               </main>
             </SidebarProvider>
           </ThemeProvider>
-        </body>
-      </html>
-    </>
+        </Providers>
+      </body>
+    </html>
   )
 }
