@@ -1,6 +1,7 @@
 'use client'
 import { useAppDispatch, useAppSelector } from './store/hooks'
 import { setUser, logout } from './store/features/authSlice'
+import MainCard from '@/components/MainCard'
 
 export default function Page() {
   const dispatch = useAppDispatch()
@@ -8,11 +9,14 @@ export default function Page() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 
   console.log('process.env.NODE_ENV', process.env.NODE_ENV)
+  
   const handleLogin = () => {
-    dispatch(setUser({
-      id: '1',
-      email: 'user@example.com'
-    }))
+    dispatch(
+      setUser({
+        id: '1',
+        email: 'user@example.com',
+      })
+    )
   }
 
   const handleLogout = () => {
@@ -20,20 +24,12 @@ export default function Page() {
   }
 
   return (
-    <div>
-      {isAuthenticated ? (
-        <>
-          <p>Welcome, {user?.email}</p>
-          <button onClick={handleLogout}>Logout</button>
-        </>
-      ) : (
-        <div className="min-h-screen">
-          <main className="flex flex-row p-6 justify-center">
-            <button onClick={handleLogin}>Login</button>
-          </main>
-        </div>
-      )}
-      {/*<Link href="/blog/">Blog</Link>*/}
+    <div className="min-h-screen">
+      <main className="flex flex-row p-6 justify-center">
+       
+          <MainCard />
+     
+      </main>
     </div>
   )
 }
