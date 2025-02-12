@@ -22,29 +22,23 @@ export default function Page() {
     dispatch(logout())
   }
 
-  return (
-    <div className="min-h-screen relative">
-      <main className="flex flex-row p-6 justify-center">
-        {isAuthenticated ? (
-          <>
-            <p>Welcome, {user?.email}</p>
-            <button onClick={handleLogout}>Logout</button>
-          </>
-        ) : (
-          <>
-            <MainCard />
-            <div className="absolute bottom-4 left-4">
-              <button 
-                onClick={handleLogin}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Login"
-              >
-                <LogIn className="w-6 h-6" />
-              </button>
-            </div>
-          </>
-        )}
-      </main>
-    </div>
-  )
+  return isAuthenticated ? (
+    <>
+      <p>Welcome, {user?.email}</p>
+      <button onClick={handleLogout}>Logout</button>
+    </>
+  ) : (
+    <>
+      <MainCard />
+      <div className="absolute bottom-4 left-4">
+        <button 
+          onClick={handleLogin}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Login"
+        >
+          <LogIn className="w-6 h-6" />
+        </button>
+      </div>
+    </>
+  );
 }
