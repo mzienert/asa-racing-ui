@@ -15,6 +15,7 @@ export default function Page() {
   
   const handleLogout = () => {
     dispatch(logout())
+    // adding a comment
   }
 
   return isAuthenticated ? (
