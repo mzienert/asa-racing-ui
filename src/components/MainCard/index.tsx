@@ -1,15 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 import { setUser } from "@/app/store/features/authSlice";
 import { useAppDispatch } from "@/app/store/hooks";
 
