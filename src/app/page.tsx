@@ -1,15 +1,14 @@
 'use client'
 import { useAppDispatch, useAppSelector } from './store/hooks'
-import { setUser, logout } from './store/features/authSlice'
+import { logout, setUser } from './store/features/authSlice'
 import MainCard from '@/components/MainCard'
+import { LogIn } from "lucide-react";
 
 export default function Page() {
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.auth.user)
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 
-  console.log('process.env.NODE_ENV', process.env.NODE_ENV)
-  
   const handleLogin = () => {
     dispatch(
       setUser({
@@ -18,17 +17,33 @@ export default function Page() {
       })
     )
   }
-
+  
   const handleLogout = () => {
     dispatch(logout())
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
       <main className="flex flex-row p-6 justify-center">
-       
-          <MainCard />
-     
+        {isAuthenticated ? (
+          <>
+            <p>Welcome, {user?.email}</p>
+            <button onClick={handleLogout}>Logout</button>
+          </>
+        ) : (
+          <>
+            <MainCard />
+            <div className="absolute bottom-4 left-4">
+              <button 
+                onClick={handleLogin}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Login"
+              >
+                <LogIn className="w-6 h-6" />
+              </button>
+            </div>
+          </>
+        )}
       </main>
     </div>
   )

@@ -10,25 +10,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { setUser } from "@/app/store/features/authSlice";
+import { useAppDispatch } from "@/app/store/hooks";
 
 const MainCard = () => {
+  const dispatch = useAppDispatch();
 
+  const handleLogin = () => {
+    dispatch(
+      setUser({
+        id: '1',
+        email: 'user@example.com',
+      })
+    )
+  }
+  
   return (
     <div className="w-1/2 mt-48">
       <Card>
-        <CardHeader>
-          <CardTitle>Hello World</CardTitle>
-          <CardDescription>
-            Enter your tracking numbers below. One on each line.
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           
-         Hello World
+        <button onClick={handleLogin}>Login</button>
         </CardContent>
-        <CardFooter>
-            Goodbye World
-        </CardFooter>
       </Card>
     </div>
   );
