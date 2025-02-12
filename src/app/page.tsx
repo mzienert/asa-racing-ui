@@ -3,9 +3,11 @@ import { useAppDispatch, useAppSelector } from './store/hooks'
 import { logout, setUser } from './store/features/authSlice'
 import MainCard from '@/components/MainCard'
 import { LogIn } from "lucide-react";
+import { useRouter } from 'next/navigation'
 
 export default function Page() {
   const dispatch = useAppDispatch()
+  const router = useRouter()
   const user = useAppSelector((state) => state.auth.user)
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 
@@ -29,10 +31,12 @@ export default function Page() {
     </>
   ) : (
     <>
-      <MainCard />
+      <MainCard>
+        <p>Hello</p>
+      </MainCard>
       <div className="absolute bottom-4 left-4">
         <button 
-          onClick={handleLogin}
+          onClick={() => router.push('/login')}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           aria-label="Login"
         >
