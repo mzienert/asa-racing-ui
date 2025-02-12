@@ -27,7 +27,11 @@ export default function Page() {
           <button onClick={handleLogout}>Logout</button>
         </>
       ) : (
-        <button onClick={handleLogin}>Login</button>
+        <div className="min-h-screen">
+          <main className="flex flex-row p-6 justify-center">
+            <button onClick={handleLogin}>Login</button>
+          </main>
+        </div>
       )}
       {/*<Link href="/blog/">Blog</Link>*/}
     </div>
