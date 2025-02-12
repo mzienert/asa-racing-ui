@@ -11,6 +11,8 @@ export default function Page() {
   const user = useAppSelector((state) => state.auth.user)
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 
+  const cardTitle = "ASA Racing";
+
   const handleLogin = () => {
     dispatch(
       setUser({
@@ -31,7 +33,7 @@ export default function Page() {
     </>
   ) : (
     <>
-      <MainCard>
+      <MainCard title={cardTitle}>
         <p>Hello</p>
       </MainCard>
       <div className="absolute bottom-4 left-4">

@@ -13,6 +13,8 @@ export default function Page() {
     const [phone, setPhone] = useState('');
     const [code, setCode] = useState('');
     const [showCode, setShowCode] = useState(false);
+
+    const cardTitle = "ASA Racing Login";
     
     const handlePhoneSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,7 +31,7 @@ export default function Page() {
             dispatch(
                 setUser({
                     id: '1',
-                    email: phone, // Using phone instead of email for now
+                    email: phone,
                 })
             );
             router.push('/');
@@ -37,7 +39,7 @@ export default function Page() {
     };
       
     return (
-        <MainCard>
+        <MainCard title={cardTitle}>
             <div className="space-y-6 w-full max-w-sm mx-auto">
                 <form onSubmit={handlePhoneSubmit} className="space-y-4">
                     <Input
