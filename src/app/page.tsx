@@ -1,6 +1,6 @@
 'use client'
 import { useAppDispatch, useAppSelector } from './store/hooks'
-import { logout, setUser } from './store/features/authSlice'
+import { logout } from './store/features/authSlice'
 import MainCard from '@/components/MainCard'
 import { LogIn } from "lucide-react";
 import { useRouter } from 'next/navigation'
@@ -12,15 +12,6 @@ export default function Page() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated)
 
   const cardTitle = "ASA Racing";
-
-  const handleLogin = () => {
-    dispatch(
-      setUser({
-        id: '1',
-        email: 'user@example.com',
-      })
-    )
-  }
   
   const handleLogout = () => {
     dispatch(logout())
