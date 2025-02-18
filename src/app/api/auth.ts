@@ -1,13 +1,21 @@
-'use server'
-
 export async function initiateLogin(phone: string) {
-    // TODO: Implement Cognito phone verification
-    console.log('initiateLogin', phone);
-    return true;
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/initiate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone }),
+    });
+    return response.ok;
 }
 
 export async function verifyCode(phone: string, code: string) {
-    console.log('verifyCode', phone, code);
-    // TODO: Implement Cognito code verification
-    return true;
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone, code }),
+    });
+    return response.ok;
 } 
