@@ -1,4 +1,4 @@
-export async function initiateLogin(phone: string) {
+export async function initiateLogin() {
 /*     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/initiate`, {
         method: 'POST',
         headers: {
@@ -10,7 +10,7 @@ export async function initiateLogin(phone: string) {
     return
 }
 
-export async function verifyCode(phone: string, code: string) {
+export async function verifyCode() {
 /*     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify`, {
         method: 'POST',
         headers: {
