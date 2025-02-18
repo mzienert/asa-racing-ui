@@ -19,7 +19,7 @@ export default function Page() {
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const result = await initiateLogin();
-       
+       console.log(result);
             setShowCode(true);
       
     };
@@ -27,7 +27,7 @@ export default function Page() {
     const handleCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const result = await verifyCode();
-       
+       console.log(result);
             dispatch(
                 setUser({
                     id: '1',
