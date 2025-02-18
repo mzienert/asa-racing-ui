@@ -10,15 +10,15 @@ import { initiateLogin, verifyCode } from "../api/auth";
 export default function Page() {
     const dispatch = useAppDispatch();
     const router = useRouter();
-    const [phone, setPhone] = useState('');
+    const [email, setEmail] = useState('');
     const [code, setCode] = useState('');
     const [showCode, setShowCode] = useState(false);
 
     const cardTitle = "ASA Racing Login";
     
-    const handlePhoneSubmit = async (e: React.FormEvent) => {
+    const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const result = await initiateLogin(phone);
+        const result = await initiateLogin(email);
         if (result) {
             setShowCode(true);
         }
@@ -26,12 +26,12 @@ export default function Page() {
 
     const handleCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const result = await verifyCode(phone, code);
+        const result = await verifyCode(email, code);
         if (result) {
             dispatch(
                 setUser({
                     id: '1',
-                    email: phone,
+                    email: email,
                 })
             );
             router.push('/');
@@ -41,12 +41,12 @@ export default function Page() {
     return (
         <MainCard title={cardTitle}>
             <div className="space-y-6 w-full max-w-sm mx-auto">
-                <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                <form onSubmit={handleEmailSubmit} className="space-y-4">
                     <Input
-                        type="tel"
-                        placeholder="Phone Number"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        type="string"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         disabled={showCode}
                         className="w-full"
                     />
