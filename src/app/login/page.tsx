@@ -35,8 +35,6 @@ export default function Page() {
                 })
             );
             router.push('/');
-
-            console.log(result);
     };
       
     return (
