@@ -17,17 +17,17 @@ export default function Page() {
     const cardTitle = "ASA Racing Login";
     
     const handleEmailSubmit = async (e: React.FormEvent) => {
-/*         e.preventDefault();
-        const result = await initiateLogin(email);
-        if (result) {
+        e.preventDefault();
+        const result = await initiateLogin();
+       
             setShowCode(true);
-        } */
+      
     };
 
     const handleCodeSubmit = async (e: React.FormEvent) => {
-/*         e.preventDefault();
-        const result = await verifyCode(email, code);
-        if (result) {
+        e.preventDefault();
+        const result = await verifyCode();
+       
             dispatch(
                 setUser({
                     id: '1',
@@ -35,16 +35,7 @@ export default function Page() {
                 })
             );
             router.push('/');
-        } */
-
-
-
-
-
-
-
-
-            
+ 
     };
       
     return (
