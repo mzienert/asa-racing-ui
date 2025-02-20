@@ -20,6 +20,10 @@ type AuthResponse = {
     sessionData?: string;
 };
 
+type CognitoUserWithSession = CognitoUser & {
+    Session: string;
+};
+
 export async function initiateLogin(email: string): Promise<{ 
     success: boolean; 
     message: string; 
@@ -97,14 +101,14 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
         });
 
         // Set the raw session string
-        (cognitoUser as unknown as { Session: string }).Session = sessionData;
+        (cognitoUser as unknown as CognitoUserWithSession).Session = sessionData;
         
         const result = await new Promise<CognitoUserSession>((resolve, reject) => {
             cognitoUser.sendCustomChallengeAnswer(otp, {
                 onSuccess: (session: CognitoUserSession) => resolve(session),
                 onFailure: (err: AuthError) => {
                     if (err.message === 'Incorrect username or password.') {
-                        (cognitoUser as unknown as { Session: string }).Session = sessionData;
+                        (cognitoUser as unknown as CognitoUserWithSession).Session = sessionData;
                     }
                     reject(err);
                 }
