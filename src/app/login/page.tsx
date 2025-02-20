@@ -5,7 +5,13 @@ import { useAppDispatch } from "../store/hooks";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { initiateLogin, verifyCode } from "../api/auth";
+import { initiateLogin, verifyOTP } from "@/helpers/auth";
+import { CognitoUserSession } from 'amazon-cognito-identity-js';
+
+console.log('Environment Variables:', {
+    userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
+    clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
+});
 
 export default function Page() {
     const dispatch = useAppDispatch();
@@ -13,28 +19,44 @@ export default function Page() {
     const [email, setEmail] = useState('');
     const [code, setCode] = useState('');
     const [showCode, setShowCode] = useState(false);
+    const [session, setSession] = useState<string | null>(null);
+    const [sessionData, setSessionData] = useState<any>(null);
 
     const cardTitle = "ASA Racing Login";
     
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const result = await initiateLogin();
-       console.log(result);
-            setShowCode(true);
-      
+        try {
+            const result = await initiateLogin(email);
+            if (result.success) {
+                setSession(result.sessionData || null);
+                setShowCode(true);
+            } else {
+                alert(`Login failed: ${result.message}`);
+            }
+        } catch (error) {
+            alert('An error occurred while trying to log in. Please try again.');
+        }
     };
 
     const handleCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const result = await verifyCode();
-       console.log(result);
-            dispatch(
-                setUser({
-                    id: '1',
-                    email: email,
-                })
-            );
-            router.push('/');
+        try {
+            const result = await verifyOTP(email, code, session);
+            if (result.success) {
+                dispatch(
+                    setUser({
+                        id: '1',
+                        email: email,
+                    })
+                );
+                router.push('/');
+            } else {
+                alert(`Verification failed: ${result.message}`);
+            }
+        } catch (error) {
+            alert('An error occurred while verifying the code. Please try again.');
+        }
     };
       
     return (
