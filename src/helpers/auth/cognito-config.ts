@@ -1,6 +1,5 @@
 import { CognitoUserPool } from 'amazon-cognito-identity-js';
 
-// Only create pool if we're in a browser environment with config
 const createUserPool = () => {
     if (typeof window === 'undefined') {
         return null;
