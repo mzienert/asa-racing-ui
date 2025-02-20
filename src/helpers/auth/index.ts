@@ -32,6 +32,13 @@ type InitAuthResult = {
 
 export async function initiateLogin(email: string): Promise<AuthResponse> {
     try {
+        if (!userPool) {
+            return {
+                success: false,
+                message: 'Authentication service not available'
+            };
+        }
+
         const normalizedEmail = email.toLowerCase();
         
         const cognitoUser = new CognitoUser({
