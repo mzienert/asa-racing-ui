@@ -43,7 +43,7 @@ export async function initiateLogin(email: string): Promise<AuthResponse> {
         
         const cognitoUser = new CognitoUser({
             Username: normalizedEmail,
-            Pool: userPool
+            Pool: userPool!
         }) as CognitoUserWithSession;
         
         const result = await new Promise<InitAuthResult>((resolve, reject) => {
@@ -107,7 +107,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
         const normalizedEmail = email.toLowerCase();
         const cognitoUser = new CognitoUser({
             Username: normalizedEmail,
-            Pool: userPool
+            Pool: userPool!
         });
 
         // Set the raw session string
@@ -168,6 +168,9 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
 
 export async function signOut(): Promise<{ success: boolean; message?: string }> {
     try {
+        if (!userPool) {
+            return { success: false, message: 'Authentication service not available' };
+        }
         const user = userPool.getCurrentUser();
         if (user) {
             user.signOut();
