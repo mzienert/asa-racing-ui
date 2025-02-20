@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { initiateLogin, verifyOTP } from "@/helpers/auth";
-import { CognitoUserSession } from 'amazon-cognito-identity-js';
+import { LoadingButton } from "@/components/ui/loading-button";
+import { AlertCircle } from "lucide-react";
 
-console.log('Environment Variables:', {
-    userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
-    clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
-});
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 50;
+const MAX_CODE_LENGTH = 6;
 
 export default function Page() {
     const dispatch = useAppDispatch();
@@ -20,82 +20,152 @@ export default function Page() {
     const [code, setCode] = useState('');
     const [showCode, setShowCode] = useState(false);
     const [session, setSession] = useState<string | null>(null);
-    const [sessionData, setSessionData] = useState<any>(null);
+    const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
+    const [isCodeSubmitting, setIsCodeSubmitting] = useState(false);
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [verificationError, setVerificationError] = useState<string | null>(null);
 
     const cardTitle = "ASA Racing Login";
     
+    const validateEmail = (value: string): boolean => {
+        if (!EMAIL_REGEX.test(value)) {
+            setEmailError('Please enter a valid email address');
+            return false;
+        }
+        if (value.length > MAX_EMAIL_LENGTH) {
+            setEmailError(`Email must be less than ${MAX_EMAIL_LENGTH} characters`);
+            return false;
+        }
+        setEmailError(null);
+        return true;
+    };
+
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (value.length <= MAX_EMAIL_LENGTH) {
+            setEmail(value);
+            if (emailError) {
+                setEmailError(null);
+            }
+        }
+    };
+
+    const handleEmailBlur = () => {
+        if (email) {
+            validateEmail(email);
+        }
+    };
+
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!validateEmail(email)) {
+            return;
+        }
+
+        setIsEmailSubmitting(true);
         try {
             const result = await initiateLogin(email);
             if (result.success) {
-                setSession(result.sessionData || null);
+                setSession(result.sessionData as string);
                 setShowCode(true);
             } else {
-                alert(`Login failed: ${result.message}`);
+                setEmailError(result.message || 'Email not found. Please check and try again.');
             }
         } catch (error) {
-            alert('An error occurred while trying to log in. Please try again.');
+            setEmailError('An unexpected error occurred. Please try again later.');
+        } finally {
+            setIsEmailSubmitting(false);
         }
     };
 
     const handleCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setVerificationError(null);
+
+        if (code.length !== MAX_CODE_LENGTH) {
+            setVerificationError(`Verification code must be ${MAX_CODE_LENGTH} digits`);
+            return;
+        }
+
+        setIsCodeSubmitting(true);
         try {
             const result = await verifyOTP(email, code, session);
             if (result.success) {
-                dispatch(
-                    setUser({
-                        id: '1',
-                        email: email,
-                    })
-                );
+                dispatch(setUser({ id: '1', email: email }));
                 router.push('/');
             } else {
-                alert(`Verification failed: ${result.message}`);
+                setVerificationError(result.message || 'Invalid verification code. Please try again.');
             }
         } catch (error) {
-            alert('An error occurred while verifying the code. Please try again.');
+            setVerificationError('An unexpected error occurred. Please try again later.');
+        } finally {
+            setIsCodeSubmitting(false);
         }
     };
-      
+
+    const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (value.length <= MAX_CODE_LENGTH) {
+            setCode(value);
+        }
+    };
+
     return (
         <MainCard title={cardTitle}>
             <div className="space-y-6 w-full max-w-sm mx-auto">
                 <form onSubmit={handleEmailSubmit} className="space-y-4">
-                    <Input
-                        type="string"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={showCode}
-                        className="w-full"
-                    />
+                    <div className="space-y-2">
+                        <Input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={handleEmailChange}
+                            onBlur={handleEmailBlur}
+                            disabled={showCode || isEmailSubmitting}
+                            className={`w-full ${emailError ? 'border-red-500' : ''}`}
+                            maxLength={MAX_EMAIL_LENGTH}
+                        />
+                        {emailError && (
+                            <div className="flex items-center text-red-500 text-sm">
+                                <AlertCircle className="h-4 w-4 mr-2" />
+                                {emailError}
+                            </div>
+                        )}
+                    </div>
                     {!showCode && (
-                        <button 
+                        <LoadingButton
                             type="submit"
-                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md"
-                        >
-                            Send Code
-                        </button>
+                            isLoading={isEmailSubmitting}
+                            text="Send Code"
+                        />
                     )}
                 </form>
 
                 {showCode && (
                     <form onSubmit={handleCodeSubmit} className="space-y-4">
-                        <Input
-                            type="text"
-                            placeholder="Enter verification code"
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            className="w-full"
-                        />
-                        <button 
+                        <div className="space-y-2">
+                            <Input
+                                type="text"
+                                placeholder="Enter verification code"
+                                value={code}
+                                onChange={handleCodeChange}
+                                disabled={isCodeSubmitting}
+                                className={`w-full ${verificationError ? 'border-red-500' : ''}`}
+                                maxLength={MAX_CODE_LENGTH}
+                            />
+                            {verificationError && (
+                                <div className="flex items-center text-red-500 text-sm">
+                                    <AlertCircle className="h-4 w-4 mr-2" />
+                                    {verificationError}
+                                </div>
+                            )}
+                        </div>
+                        <LoadingButton
                             type="submit"
-                            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md"
-                        >
-                            Verify & Login
-                        </button>
+                            isLoading={isCodeSubmitting}
+                            text="Verify & Login"
+                        />
                     </form>
                 )}
             </div>
