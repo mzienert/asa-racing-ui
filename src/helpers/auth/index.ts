@@ -128,7 +128,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
         const accessToken = result.getAccessToken().getJwtToken();
         const idToken = result.getIdToken().getJwtToken();
         
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/${process.env.NEXT_PUBLIC_STAGE}/auth/session`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -137,7 +137,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
             body: JSON.stringify({ accessToken, idToken })
         });
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session/verify`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/${process.env.NEXT_PUBLIC_STAGE}/auth/session/verify`, {
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
