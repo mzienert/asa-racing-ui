@@ -30,6 +30,12 @@ type InitAuthResult = {
     challengeParameters?: Record<string, string>;
 };
 
+const getApiUrl = () => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, ''); // Remove trailing slash if present
+    const stage = process.env.NEXT_PUBLIC_STAGE || 'prod';
+    return `${baseUrl}/${stage}`;
+};
+
 export async function initiateLogin(email: string): Promise<AuthResponse> {
     try {
         if (!userPool) {
@@ -128,7 +134,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
         const accessToken = result.getAccessToken().getJwtToken();
         const idToken = result.getIdToken().getJwtToken();
         
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/${process.env.NEXT_PUBLIC_STAGE}/auth/session`, {
+        await fetch(`${getApiUrl()}/auth/session`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -137,7 +143,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
             body: JSON.stringify({ accessToken, idToken })
         });
 
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/${process.env.NEXT_PUBLIC_STAGE}/auth/session/verify`, {
+        await fetch(`${getApiUrl()}/auth/session/verify`, {
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
