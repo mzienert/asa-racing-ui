@@ -1,4 +1,4 @@
-import { CognitoUser, CognitoUserPool, CognitoUserSession, AuthenticationDetails } from 'amazon-cognito-identity-js';
+import { CognitoUser, CognitoUserSession, AuthenticationDetails } from 'amazon-cognito-identity-js';
 import { userPool } from './cognito-config';
 
 if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || !process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID) {
@@ -24,20 +24,22 @@ type CognitoUserWithSession = CognitoUser & {
     Session: string;
 };
 
-export async function initiateLogin(email: string): Promise<{ 
-    success: boolean; 
-    message: string; 
-    sessionData?: string;
-}> {
+type InitAuthResult = {
+    cognitoUser: CognitoUserWithSession;
+    session?: CognitoUserSession;
+    challengeParameters?: Record<string, string>;
+};
+
+export async function initiateLogin(email: string): Promise<AuthResponse> {
     try {
         const normalizedEmail = email.toLowerCase();
         
         const cognitoUser = new CognitoUser({
             Username: normalizedEmail,
             Pool: userPool
-        });
+        }) as CognitoUserWithSession;
         
-        const result = await new Promise<any>((resolve, reject) => {
+        const result = await new Promise<InitAuthResult>((resolve, reject) => {
             cognitoUser.initiateAuth(new AuthenticationDetails({
                 Username: normalizedEmail,
                 ValidationData: {
@@ -55,22 +57,23 @@ export async function initiateLogin(email: string): Promise<{
             message: 'OTP sent to email',
             sessionData: result.cognitoUser.Session
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const authError = error as AuthError;
         // Handle specific Cognito errors
-        if (error.name === 'NotAuthorizedException') {
+        if (authError.name === 'NotAuthorizedException') {
             return {
                 success: false,
                 message: 'Email not found. Please check and try again.'
             };
         }
-        if (error.name === 'UserNotFoundException') {
+        if (authError.name === 'UserNotFoundException') {
             return {
                 success: false,
                 message: 'Email not found. Please check and try again.'
             };
         }
         // Log unexpected errors but return a user-friendly message
-        console.error('Unexpected auth error:', error);
+        console.error('Unexpected auth error:', authError);
         return {
             success: false,
             message: 'Unable to process request. Please try again later.'
@@ -156,7 +159,7 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
     }
 }
 
-export async function signOut() {
+export async function signOut(): Promise<{ success: boolean; message?: string }> {
     try {
         const user = userPool.getCurrentUser();
         if (user) {
@@ -166,8 +169,9 @@ export async function signOut() {
             return { success: true };
         }
         return { success: false, message: 'No user found' };
-    } catch (error: any) {
-        console.error('Signout error:', error);
-        return { success: false, message: error.message };
+    } catch (error: unknown) {
+        const authError = error as AuthError;
+        console.error('Signout error:', authError);
+        return { success: false, message: authError.message };
     }
 } 
