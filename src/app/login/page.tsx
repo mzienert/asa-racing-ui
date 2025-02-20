@@ -73,7 +73,8 @@ export default function Page() {
                 setEmailError(result.message || 'Email not found. Please check and try again.');
             }
         } catch (error) {
-            setEmailError('An unexpected error occurred. Please try again later.');
+            setEmailError(`An unexpected error occurred. Please try again later.`);
+            console.error('Error during email submission:', error);
         } finally {
             setIsEmailSubmitting(false);
         }
@@ -99,6 +100,7 @@ export default function Page() {
             }
         } catch (error) {
             setVerificationError('An unexpected error occurred. Please try again later.');
+            console.error('Error during code submission:', error);
         } finally {
             setIsCodeSubmitting(false);
         }

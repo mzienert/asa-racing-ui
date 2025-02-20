@@ -9,6 +9,7 @@ interface LoadingButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function LoadingButton({ 
     isLoading, 
     text, 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     loadingText,
     className = '', 
     disabled,

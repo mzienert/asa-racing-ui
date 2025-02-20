@@ -1,5 +1,5 @@
-import { CognitoUser, CognitoUserPool, CognitoUserSession } from 'amazon-cognito-identity-js';
-import { AuthenticationDetails } from 'amazon-cognito-identity-js';
+import { CognitoUser, CognitoUserPool, CognitoUserSession, AuthenticationDetails } from 'amazon-cognito-identity-js';
+import { userPool } from './cognito-config';
 
 if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || !process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID) {
     console.error('Environment variables not found:', {
@@ -9,13 +9,16 @@ if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || !process.env.NEXT_PUBLIC_CO
     throw new Error('Cognito configuration missing. Please check your environment variables.');
 }
 
-const userPool = new CognitoUserPool({
-    UserPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
-    ClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
-});
+type AuthError = {
+    name: string;
+    message: string;
+};
 
-// Keep a reference to the current authentication attempt
-let currentCognitoUser: CognitoUser | null = null;
+type AuthResponse = {
+    success: boolean;
+    message: string;
+    sessionData?: string;
+};
 
 export async function initiateLogin(email: string): Promise<{ 
     success: boolean; 
@@ -76,7 +79,7 @@ export async function initiateLogin(email: string): Promise<{
 // forcing users to request a new code after an incorrect attempt.
 // Bug: https://linear.app/megatron/issue/MEG-16/fix-session-when-user-enters-invalid-auth-code
 
-export async function verifyOTP(email: string, otp: string, sessionData: string | null) {
+export async function verifyOTP(email: string, otp: string, sessionData: string | null): Promise<AuthResponse> {
     console.log('Starting verifyOTP with session:', !!sessionData);
     
     if (!sessionData) {
@@ -94,29 +97,24 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
         });
 
         // Set the raw session string
-        (cognitoUser as any).Session = sessionData;
+        (cognitoUser as unknown as { Session: string }).Session = sessionData;
         
         const result = await new Promise<CognitoUserSession>((resolve, reject) => {
             cognitoUser.sendCustomChallengeAnswer(otp, {
                 onSuccess: (session: CognitoUserSession) => resolve(session),
-                onFailure: (err) => {
-                    // Keep the session valid for incorrect codes
+                onFailure: (err: AuthError) => {
                     if (err.message === 'Incorrect username or password.') {
-                        (cognitoUser as any).Session = sessionData;
+                        (cognitoUser as unknown as { Session: string }).Session = sessionData;
                     }
                     reject(err);
                 }
             });
         });
 
-        if (!result || !result.getIdToken()) {
-            throw new Error('Failed to get valid session');
-        }
-        
         const accessToken = result.getAccessToken().getJwtToken();
         const idToken = result.getIdToken().getJwtToken();
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -125,25 +123,22 @@ export async function verifyOTP(email: string, otp: string, sessionData: string 
             body: JSON.stringify({ accessToken, idToken })
         });
 
-        const sessionResult = await response.json();
-        
-        const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session/verify`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/session/verify`, {
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
         
-        const verifyResult = await verifyResponse.json();
-        
         return {
             success: true,
             message: 'Login successful'
         };
-    } catch (error: any) {
-        console.log('Caught error:', error.name, error.message);
+    } catch (error: unknown) {
+        const authError = error as AuthError;
+        console.log('Caught error:', authError.name, authError.message);
         
-        if (error.message === 'Incorrect username or password.') {
+        if (authError.message === 'Incorrect username or password.') {
             return {
                 success: false,
                 message: 'Incorrect verification code. Please try again.'
