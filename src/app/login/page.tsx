@@ -94,7 +94,7 @@ export default function Page() {
             const result = await verifyOTP(email, code, session);
             if (result.success) {
                 dispatch(setUser({ id: '1', email: email }));
-                router.push('/');
+                router.push('/admin');
             } else {
                 setVerificationError(result.message || 'Invalid verification code. Please try again.');
             }
