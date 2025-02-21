@@ -30,11 +30,9 @@ type InitAuthResult = {
     challengeParameters?: Record<string, string>;
 };
 
-const getApiUrl = () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, ''); // Remove trailing slash if present
-    const stage = process.env.NEXT_PUBLIC_STAGE || 'prod';
-    return `${baseUrl}/${stage}`;
-};
+function getApiUrl() {
+    return 'https://0wq09bpeu5.execute-api.us-west-1.amazonaws.com/prod';
+}
 
 export async function initiateLogin(email: string): Promise<AuthResponse> {
     try {
