@@ -1,9 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './features/authSlice'
+import racesReducer from './features/racesSlice'
+import racersReducer from './features/racersSlice';
 
 export const store = configureStore({
   reducer: {
-    auth: authReducer
+    auth: authReducer,
+    races: racesReducer,
+    racers: racersReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

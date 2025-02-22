@@ -29,8 +29,8 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <Providers>
-          <div className="min-h-screen relative">
-            <main className="flex flex-row p-6 justify-center">
+          <div className="min-h-screen">
+            <main>
               {children}
             </main>
           </div>
