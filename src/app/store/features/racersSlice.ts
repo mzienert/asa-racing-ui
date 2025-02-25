@@ -5,6 +5,7 @@ export interface Racer {
   name: string;
   bibNumber: string;
   classId: string;
+  startingPosition: number;
 }
 
 interface RacersState {
@@ -25,20 +26,32 @@ export const loadRacersFromStorage = createAsyncThunk(
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
-  async (racer: Omit<Racer, 'id'>) => {
-    const newRacer = {
-      ...racer,
-      id: crypto.randomUUID()
-    };
-    
+  async (racer: Omit<Racer, 'id' | 'startingPosition'>, { rejectWithValue }) => {
     const storedRacers = localStorage.getItem('racers');
     const racers = storedRacers ? JSON.parse(storedRacers) : {};
     
-    if (!racers[newRacer.classId]) {
-      racers[newRacer.classId] = [];
-    }
-    racers[newRacer.classId].push(newRacer);
+    // Check for duplicate bib number and get existing racer's name
+    const allRacers = Object.values(racers).flat() as Racer[];
+    const existingRacer = allRacers.find(r => r.bibNumber === racer.bibNumber);
     
+    if (existingRacer) {
+      return rejectWithValue({
+        message: 'Duplicate bib number',
+        existingRacer
+      });
+    }
+
+    if (!racers[racer.classId]) {
+      racers[racer.classId] = [];
+    }
+
+    const newRacer = {
+      ...racer,
+      id: crypto.randomUUID(),
+      startingPosition: racers[racer.classId].length + 1
+    };
+    
+    racers[racer.classId].push(newRacer);
     localStorage.setItem('racers', JSON.stringify(racers));
     return newRacer;
   }
@@ -57,6 +70,19 @@ export const updatePersistedRacer = createAsyncThunk(
     }
     
     return racer;
+  }
+);
+
+export const deletePersistedRacer = createAsyncThunk(
+  'racers/deletePersistedRacer',
+  async ({ id, classId }: Pick<Racer, 'id' | 'classId'>) => {
+    const storedRacers = localStorage.getItem('racers');
+    let racers = storedRacers ? JSON.parse(storedRacers) : {};
+    
+    racers[classId] = racers[classId].filter((r: Racer) => r.id !== id);
+    localStorage.setItem('racers', JSON.stringify(racers));
+    
+    return { id, classId };
   }
 );
 
@@ -82,6 +108,10 @@ const racersSlice = createSlice({
         if (racerIndex !== undefined && racerIndex !== -1) {
           state.racers[classId][racerIndex] = action.payload;
         }
+      })
+      .addCase(deletePersistedRacer.fulfilled, (state, action) => {
+        const { id, classId } = action.payload;
+        state.racers[classId] = state.racers[classId].filter(racer => racer.id !== id);
       });
   }
 });

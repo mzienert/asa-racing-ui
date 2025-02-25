@@ -1,5 +1,5 @@
 'use client';
-import { persistRacer, updatePersistedRacer, loadRacersFromStorage } from '@/app/store/features/racersSlice';
+import { persistRacer, updatePersistedRacer, loadRacersFromStorage, deletePersistedRacer } from '@/app/store/features/racersSlice';
 import { selectRaceClasses, selectRacersByClass } from '@/app/store/selectors/raceSelectors';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -8,6 +8,7 @@ import { selectHasActiveRace } from '@/app/store/selectors/raceSelectors';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import type { Racer } from '@/app/store/features/racersSlice';
 import type { AppDispatch } from '@/app/store/store';
+import { toast } from 'sonner';
 
 interface RacerFormProps {
   classId: string;
@@ -27,13 +28,21 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
     }
   }, [editRacer]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (editRacer) {
-      dispatch(updatePersistedRacer({ id: editRacer.id, name, bibNumber, classId }));
+      dispatch(updatePersistedRacer({ ...editRacer, name, bibNumber, classId }));
+      toast.success(`Updated ${name} with bib #${bibNumber}`);
       onCancelEdit?.();
     } else {
-      dispatch(persistRacer({ name, bibNumber, classId }));
+      const result = await dispatch(persistRacer({ name, bibNumber, classId }));
+      if (result.type === 'racers/persistRacer/rejected') {
+        const payload = result.payload as { existingRacer: Racer };
+        toast.error(`Bib #${bibNumber} is already assigned to ${payload.existingRacer.name}`);
+      } else {
+        toast.success(`Added ${name} with bib #${bibNumber}`);
+      }
     }
     setName('');
     setBibNumber('');
@@ -144,29 +153,53 @@ export const Racers = () => {
                       <span className="font-medium">#{racer.bibNumber}</span>
                       <span>{racer.name}</span>
                     </div>
-                    <button
-                      onClick={() => setEditingRacer(racer)}
-                      className={`p-2 rounded-full transition-colors
-                        ${editingRacer?.id === racer.id 
-                          ? 'bg-primary/10 hover:bg-primary/20' 
-                          : 'hover:bg-gray-200'
-                        }`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={editingRacer?.id === racer.id ? 'text-primary' : ''}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setEditingRacer(racer)}
+                        className={`p-2 rounded-full transition-colors
+                          ${editingRacer?.id === racer.id 
+                            ? 'bg-primary/10 hover:bg-primary/20' 
+                            : 'hover:bg-gray-200'
+                          }`}
                       >
-                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                      </svg>
-                    </button>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={editingRacer?.id === racer.id ? 'text-primary' : ''}
+                        >
+                          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          dispatch(deletePersistedRacer({ id: racer.id, classId: racer.classId }));
+                          toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
+                        }}
+                        className="p-2 rounded-full transition-colors hover:bg-red-100"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-red-500"
+                        >
+                          <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
                 
