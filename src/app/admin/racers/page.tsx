@@ -39,21 +39,28 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
     setBibNumber('');
   };
 
+  const handleCancel = () => {
+    setName('');
+    setBibNumber('');
+    onCancelEdit?.();
+  };
+
   return (
     <form onSubmit={handleSubmit} className="mt-4">
       <div className="flex gap-2">
         <input
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Racer Name"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          value={bibNumber}
+          onChange={(e) => setBibNumber(e.target.value)}
+          placeholder="Bib"
+          maxLength={3}
+          className="flex h-10 w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <input
           type="text"
-          value={bibNumber}
-          onChange={(e) => setBibNumber(e.target.value)}
-          placeholder="Bib Number"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Racer Name"
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
         <button 
@@ -65,7 +72,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
         {editRacer && (
           <button
             type="button"
-            onClick={onCancelEdit}
+            onClick={handleCancel}
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2"
           >
             Cancel
