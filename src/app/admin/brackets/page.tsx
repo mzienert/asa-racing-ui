@@ -1,19 +1,18 @@
 'use client';
 import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { 
   selectHasActiveRace, 
   selectRaceClasses,
   selectRacersByAllClasses,
 } from '@/app/store/selectors/raceSelectors';
-import { AppDispatch } from '@/app/store/store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getRacerCount } from "@/helpers/racers";
 import BracketView from './BracketView';
 
 export default function BracketsPage() {
-  const dispatch = useDispatch<AppDispatch>();
+  //const dispatch = useDispatch<AppDispatch>();
   const hasRace = useSelector(selectHasActiveRace);
   const raceClasses = useSelector(selectRaceClasses);
   const racersByClass = useSelector(selectRacersByAllClasses);

@@ -11,7 +11,7 @@ interface RaceMatchProps {
 
 export const RaceMatch: React.FC<RaceMatchProps> = ({ 
   raceNumber, 
-  position = 'left',
+  //position = 'left',
   racers = []
 }) => {
   return (

@@ -61,7 +61,7 @@ export const updatePersistedRacer = createAsyncThunk(
   'racers/updatePersistedRacer',
   async (racer: Racer) => {
     const storedRacers = localStorage.getItem('racers');
-    let racers = storedRacers ? JSON.parse(storedRacers) : {};
+    const racers = storedRacers ? JSON.parse(storedRacers) : {};
     
     const racerIndex = racers[racer.classId]?.findIndex((r: Racer) => r.id === racer.id);
     if (racerIndex !== undefined && racerIndex !== -1) {
@@ -77,7 +77,7 @@ export const deletePersistedRacer = createAsyncThunk(
   'racers/deletePersistedRacer',
   async ({ id, classId }: Pick<Racer, 'id' | 'classId'>) => {
     const storedRacers = localStorage.getItem('racers');
-    let racers = storedRacers ? JSON.parse(storedRacers) : {};
+    const racers = storedRacers ? JSON.parse(storedRacers) : {};
     
     racers[classId] = racers[classId].filter((r: Racer) => r.id !== id);
     localStorage.setItem('racers', JSON.stringify(racers));

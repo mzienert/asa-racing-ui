@@ -207,7 +207,7 @@ export default function RacesPage() {
                           }}
                         />
                         <label htmlFor="mens-open" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Men's Open
+                          Men&apos;s Open
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -223,7 +223,7 @@ export default function RacesPage() {
                           }}
                         />
                         <label htmlFor="mens-amateur" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Men's Amateur
+                          Men&apos;s Amateur
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -239,7 +239,7 @@ export default function RacesPage() {
                           }}
                         />
                         <label htmlFor="womens" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Women's
+                          Women&apos;s
                         </label>
                       </div>
                     </div>
