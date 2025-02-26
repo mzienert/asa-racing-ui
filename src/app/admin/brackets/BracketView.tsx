@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Racer } from '@/app/store/features/racersSlice';
 import { organizeFirstRoundPairs, getRacerDisplayName } from '@/helpers/races';
+import {
+  DndContext,
+  useSensors,
+  useSensor,
+  PointerSensor,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useDispatch } from 'react-redux';
+import { updatePersistedRacer } from '@/app/store/features/racersSlice';
+import type { AppDispatch } from '@/app/store/store';
+import { RaceMatch } from './RaceMatch';
 
 interface BracketViewProps {
   racers: Racer[];
+}
+
+interface RoundGroupProps {
+  groups: Racer[][];
+  roundIndex: number;
 }
 
 interface RaceMatchProps {
@@ -12,21 +36,58 @@ interface RaceMatchProps {
   racers?: Racer[];
 }
 
-const RaceMatch: React.FC<RaceMatchProps> = ({ raceNumber, position, racers = [] }) => {
+interface RacerItemProps {
+  racer: Racer;
+}
+
+// Draggable racer component
+function RacerItem({ racer }: RacerItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: racer.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <div className="relative flex flex-col border rounded-md p-2 w-[220px] bg-card shadow-sm">
-      <div className="text-sm text-muted-foreground mb-1 font-medium">Race {raceNumber}</div>
-      <div className="flex flex-col">
-        {racers.map((racer, index) => (
-          <div
-            key={racer?.id || index}
-            className={`text-sm border-b py-1.5 px-2 ${
-              index % 2 === 0 ? 'bg-muted/10' : 'bg-muted/5'
-            } ${index === 0 ? 'rounded-t-sm' : ''} ${
-              index === racers.length - 1 ? 'rounded-b-sm border-b-0' : ''
-            } truncate`}
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="p-2 bg-white border rounded shadow-sm mb-2 cursor-move"
+    >
+      {racer.name}
+    </div>
+  );
+}
+
+// Component for a round (group of 4 racers / 2 races)
+const RoundGroup: React.FC<RoundGroupProps> = ({ groups, roundIndex }) => {
+  return (
+    <div className="flex gap-4 p-4 border rounded-lg bg-gray-50">
+      <div className="text-sm font-semibold mb-2">Round {roundIndex + 1}</div>
+      <div className="flex gap-4">
+        {groups.map((group, groupIndex) => (
+          <div 
+            key={groupIndex}
+            className="p-4 border rounded bg-white"
           >
-            {getRacerDisplayName(racer)}
+            <div className="text-sm font-semibold mb-2">Race {roundIndex * 2 + groupIndex + 1}</div>
+            <SortableContext
+              items={group.map(racer => racer.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {group.map((racer) => (
+                <RacerItem key={racer.id} racer={racer} />
+              ))}
+            </SortableContext>
           </div>
         ))}
       </div>
@@ -35,52 +96,200 @@ const RaceMatch: React.FC<RaceMatchProps> = ({ raceNumber, position, racers = []
 };
 
 const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
-  const firstRoundPairs = organizeFirstRoundPairs(racers);
+  const dispatch = useDispatch<AppDispatch>();
+  const [activeRacer, setActiveRacer] = useState<Racer | null>(null);
+  
+  // Initialize first round groups (4 racers per group)
+  const [firstRoundGroups, setFirstRoundGroups] = useState(() => {
+    const groups: Racer[][] = [];
+    for (let i = 0; i < racers.length; i += 4) {
+      groups.push(racers.slice(i, i + 4));
+    }
+    return groups;
+  });
+
+  // Calculate number of races needed for subsequent rounds
+  const numFirstRoundRaces = firstRoundGroups.length;
+  const numSemiFinalRaces = Math.ceil(numFirstRoundRaces / 2);
+  const numSecondChanceRaces = Math.floor(numFirstRoundRaces / 2);
+
+  const [semiFinalGroups, setSemiFinalGroups] = useState<Racer[][]>(
+    Array(numSemiFinalRaces).fill([])
+  );
+  const [finalGroup, setFinalGroup] = useState<Racer[]>([]);
+  const [secondChanceGroups, setSecondChanceGroups] = useState<Racer[][]>(
+    Array(numSecondChanceRaces).fill([])
+  );
+  const [secondChanceFinal, setSecondChanceFinal] = useState<Racer[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const activeGroup = firstRoundGroups.find(group => 
+      group.some(racer => racer.id === active.id)
+    );
+    const draggedRacer = activeGroup?.find(racer => racer.id === active.id);
+    if (draggedRacer) {
+      setActiveRacer(draggedRacer);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveRacer(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    console.log('Before move - Groups:', firstRoundGroups.map(g => g.length));
+    console.log('Moving racer:', activeId, 'to group with:', overId);
+
+    const activeGroupIndex = firstRoundGroups.findIndex(group => 
+      group.some(racer => racer.id === activeId)
+    );
+    const overGroupIndex = firstRoundGroups.findIndex(group => 
+      group.some(racer => racer.id === overId)
+    );
+
+    if (activeGroupIndex === -1 || overGroupIndex === -1) return;
+
+    setFirstRoundGroups(prevGroups => {
+      const newGroups = JSON.parse(JSON.stringify(prevGroups));
+      const activeGroup = newGroups[activeGroupIndex];
+      const overGroup = newGroups[overGroupIndex];
+      
+      console.log('Initial state:', {
+        activeGroup: activeGroup.map(r => r.id),
+        overGroup: overGroup.map(r => r.id)
+      });
+
+      if (activeGroupIndex === overGroupIndex) {
+        // Same group logic remains unchanged
+        const oldIndex = activeGroup.findIndex((racer: Racer) => racer.id === activeId);
+        const newIndex = activeGroup.findIndex((racer: Racer) => racer.id === overId);
+        
+        const [movedRacer] = activeGroup.splice(oldIndex, 1);
+        activeGroup.splice(newIndex, 0, movedRacer);
+      } else {
+        // Remove from active group
+        const movedRacerIndex = activeGroup.findIndex((racer: Racer) => racer.id === activeId);
+        const [movedRacer] = activeGroup.splice(movedRacerIndex, 1);
+        
+        // Add to over group
+        const overIndex = overGroup.findIndex((racer: Racer) => racer.id === overId);
+        overGroup.splice(overIndex, 0, movedRacer);
+
+        // If over group now has more than 4 racers, move the last one back
+        if (overGroup.length > 4) {
+          const excessRacer = overGroup.pop()!;
+          activeGroup.push(excessRacer);
+        }
+      }
+
+      // Update positions for all affected groups
+      [activeGroup, overGroup].forEach((group: Racer[]) => {
+        group.forEach((racer: Racer, idx: number) => {
+          racer.position = idx + 1;
+          dispatch(updatePersistedRacer(racer));
+        });
+      });
+      
+      console.log('After move - Final groups:', newGroups.map(g => g.length));
+      return newGroups;
+    });
+  };
 
   return (
-    <div className="overflow-x-auto w-full h-full">
-      <div className="flex gap-24 p-8 pb-16 min-w-[1200px] min-h-[900px]">
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex gap-8">
         {/* Second Chance Column */}
-        <div className="flex flex-col gap-8 flex-1">
-          <h3 className="text-xl font-semibold text-foreground/90 mb-4">Second Chance</h3>
-          <div className="flex flex-col gap-24">
-            <RaceMatch raceNumber={firstRoundPairs.length + 1} position="left" />
+        <div className="w-[250px]">
+          <h3 className="text-lg font-semibold mb-4">Second Chance</h3>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              {secondChanceGroups.map((group, index) => (
+                <RaceMatch
+                  key={`second-chance-${index}`}
+                  raceNumber={numFirstRoundRaces + index + 1}
+                  racers={group}
+                  position="left"
+                />
+              ))}
+            </div>
+            {numSecondChanceRaces > 0 && (
+              <div>
+                <RaceMatch
+                  raceNumber={numFirstRoundRaces + numSecondChanceRaces + numSemiFinalRaces + 1}
+                  racers={secondChanceFinal}
+                  position="left"
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* First Round Column */}
-        <div className="flex flex-col gap-4 flex-1">
-          <h3 className="text-xl font-semibold text-foreground/90 mb-2">First Round</h3>
-          <div className="flex flex-col gap-8">
-            {firstRoundPairs.map((racers, index) => (
-              <RaceMatch 
-                key={index}
-                raceNumber={index + 1} 
-                position="left" 
-                racers={racers}
+        {/* Main Bracket Column */}
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold mb-4">First Round</h3>
+          <div className="space-y-4">
+            {firstRoundGroups.map((group, index) => (
+              <RaceMatch
+                key={`first-round-${index}`}
+                raceNumber={index + 1}
+                racers={group}
               />
             ))}
           </div>
         </div>
 
-        {/* Round of 8 Column */}
-        <div className="flex flex-col gap-8 flex-1">
-          <h3 className="text-xl font-semibold text-foreground/90 mb-4">Round of 8</h3>
-          <div className="flex flex-col gap-24">
-            <RaceMatch raceNumber={firstRoundPairs.length + 2} position="right" />
-            <RaceMatch raceNumber={firstRoundPairs.length + 3} position="right" />
-          </div>
-        </div>
-
-        {/* Finals Column */}
-        <div className="flex flex-col gap-8 flex-1">
-          <h3 className="text-xl font-semibold text-foreground/90 mb-4">Finals</h3>
-          <div className="flex flex-col gap-24">
-            <RaceMatch raceNumber={firstRoundPairs.length + 4} position="right" />
+        {/* Elimination Column */}
+        <div className="w-[250px]">
+          <h3 className="text-lg font-semibold mb-4">Eliminations</h3>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              {semiFinalGroups.map((group, index) => (
+                <RaceMatch
+                  key={`semi-final-${index}`}
+                  raceNumber={numFirstRoundRaces + numSecondChanceRaces + index + 1}
+                  racers={group}
+                  position="right"
+                />
+              ))}
+            </div>
+            {numSemiFinalRaces > 0 && (
+              <div>
+                <RaceMatch
+                  raceNumber={numFirstRoundRaces + numSecondChanceRaces + numSemiFinalRaces + 2}
+                  racers={finalGroup}
+                  position="right"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+
+      <DragOverlay>
+        {activeRacer ? (
+          <div className="p-2 bg-white border rounded shadow-sm cursor-move flex justify-between items-center">
+            <span>{activeRacer.name}</span>
+            <span className="text-gray-500 text-sm">#{activeRacer.bibNumber}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

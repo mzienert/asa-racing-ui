@@ -5,7 +5,7 @@ export interface Racer {
   name: string;
   bibNumber: string;
   classId: string;
-  startingPosition: number;
+  position: number;
 }
 
 interface RacersState {
@@ -26,7 +26,7 @@ export const loadRacersFromStorage = createAsyncThunk(
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
-  async (racer: Omit<Racer, 'id' | 'startingPosition'>, { rejectWithValue }) => {
+  async (racer: Omit<Racer, 'id' | 'position'>, { rejectWithValue }) => {
     const storedRacers = localStorage.getItem('racers');
     const racers = storedRacers ? JSON.parse(storedRacers) : {};
     
@@ -48,7 +48,7 @@ export const persistRacer = createAsyncThunk(
     const newRacer = {
       ...racer,
       id: crypto.randomUUID(),
-      startingPosition: racers[racer.classId].length + 1
+      position: racers[racer.classId].length + 1
     };
     
     racers[racer.classId].push(newRacer);
