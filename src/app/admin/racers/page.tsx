@@ -92,7 +92,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
   );
 };
 
-export const Racers = () => {
+const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
   const hasRace = useSelector(selectHasActiveRace);
