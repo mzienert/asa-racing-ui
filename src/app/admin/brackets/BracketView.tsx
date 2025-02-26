@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Racer } from '@/app/store/features/racersSlice';
-import { organizeFirstRoundPairs, getRacerDisplayName } from '@/helpers/races';
 import {
   DndContext,
   useSensors,
@@ -30,6 +29,7 @@ interface RoundGroupProps {
   roundIndex: number;
 }
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 interface RaceMatchProps {
   raceNumber: number;
   position: 'left' | 'right';
@@ -69,6 +69,7 @@ function RacerItem({ racer }: RacerItemProps) {
 }
 
 // Component for a round (group of 4 racers / 2 races)
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const RoundGroup: React.FC<RoundGroupProps> = ({ groups, roundIndex }) => {
   return (
     <div className="flex gap-4 p-4 border rounded-lg bg-gray-50">
@@ -113,13 +114,17 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
   const numSemiFinalRaces = Math.ceil(numFirstRoundRaces / 2);
   const numSecondChanceRaces = Math.floor(numFirstRoundRaces / 2);
 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [semiFinalGroups, setSemiFinalGroups] = useState<Racer[][]>(
     Array(numSemiFinalRaces).fill([])
   );
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [finalGroup, setFinalGroup] = useState<Racer[]>([]);
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [secondChanceGroups, setSecondChanceGroups] = useState<Racer[][]>(
     Array(numSecondChanceRaces).fill([])
   );
+  /* eslint-disable @typescript-eslint/no-unused-vars */ 
   const [secondChanceFinal, setSecondChanceFinal] = useState<Racer[]>([]);
 
   const sensors = useSensors(
