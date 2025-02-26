@@ -207,7 +207,6 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
         });
       });
       
-      console.log('After move - Final groups:', newGroups.map(g => g.length));
       return newGroups;
     });
   };
