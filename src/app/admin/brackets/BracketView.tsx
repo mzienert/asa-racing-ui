@@ -172,8 +172,8 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
       const overGroup = newGroups[overGroupIndex];
       
       console.log('Initial state:', {
-        activeGroup: activeGroup.map(r => r.id),
-        overGroup: overGroup.map(r => r.id)
+        activeGroup: activeGroup.map((r: Racer) => r.id),
+        overGroup: overGroup.map((r: Racer) => r.id)
       });
 
       if (activeGroupIndex === overGroupIndex) {
