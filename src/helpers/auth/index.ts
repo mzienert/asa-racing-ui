@@ -31,7 +31,9 @@ type InitAuthResult = {
 };
 
 function getApiUrl() {
-    return 'https://0wq09bpeu5.execute-api.us-west-1.amazonaws.com/prod';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    const stage = process.env.NEXT_PUBLIC_STAGE;
+    return `${baseUrl}/${stage}`;
 }
 
 export async function initiateLogin(email: string): Promise<AuthResponse> {
