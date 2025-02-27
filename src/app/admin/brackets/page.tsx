@@ -37,9 +37,6 @@ export default function BracketsPage() {
     );
   }
 
-
-  
-
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Bracket Management</h1>
