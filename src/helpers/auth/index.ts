@@ -32,8 +32,8 @@ type InitAuthResult = {
 
 function getApiUrl() {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const stage = process.env.NEXT_PUBLIC_STAGE;
-    return `${baseUrl}/${stage}`;
+    // The stage is already included in the custom domain mapping
+    return baseUrl;
 }
 
 export async function initiateLogin(email: string): Promise<AuthResponse> {
