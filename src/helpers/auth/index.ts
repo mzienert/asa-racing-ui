@@ -44,24 +44,35 @@ export async function initiateLogin(email: string) {
             session: response.Session,
             challengeName: response.ChallengeName,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error initiating login:', error);
         
-        if (error.name === 'NotAuthorizedException') {
+        // Type guard for error object
+        if (error && typeof error === 'object' && 'name' in error) {
+            if (error.name === 'NotAuthorizedException') {
+                return {
+                    success: false,
+                    error: 'Invalid credentials',
+                };
+            } else if (error.name === 'UserNotFoundException') {
+                return {
+                    success: false,
+                    error: 'User not found',
+                };
+            }
+            
+            // Safe access to message property
             return {
                 success: false,
-                error: 'Invalid credentials',
-            };
-        } else if (error.name === 'UserNotFoundException') {
-            return {
-                success: false,
-                error: 'User not found',
+                error: 'message' in error && typeof error.message === 'string' 
+                    ? error.message 
+                    : 'An error occurred during login',
             };
         }
         
         return {
             success: false,
-            error: error.message || 'An error occurred during login',
+            error: 'An error occurred during login',
         };
     }
 }
@@ -119,24 +130,35 @@ export async function verifyOTP(email: string, otp: string, session: string) {
             success: false,
             error: 'Verification failed',
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error verifying OTP:', error);
         
-        if (error.name === 'CodeMismatchException') {
+        // Type guard for error object
+        if (error && typeof error === 'object' && 'name' in error) {
+            if (error.name === 'CodeMismatchException') {
+                return {
+                    success: false,
+                    error: 'Incorrect verification code',
+                };
+            } else if (error.name === 'ExpiredCodeException') {
+                return {
+                    success: false,
+                    error: 'Verification code has expired',
+                };
+            }
+            
+            // Safe access to message property
             return {
                 success: false,
-                error: 'Incorrect verification code',
-            };
-        } else if (error.name === 'ExpiredCodeException') {
-            return {
-                success: false,
-                error: 'Verification code has expired',
+                error: 'message' in error && typeof error.message === 'string' 
+                    ? error.message 
+                    : 'An error occurred during verification',
             };
         }
         
         return {
             success: false,
-            error: error.message || 'An error occurred during verification',
+            error: 'An error occurred during verification',
         };
     }
 }

@@ -72,7 +72,7 @@ export default function Page() {
             } else {
                 setEmailError(result.error || 'Email not found. Please check and try again.');
             }
-        } catch (error) {
+        } catch (error: unknown) {
             setEmailError(`An unexpected error occurred. Please try again later.`);
             console.error('Error during email submission:', error);
         } finally {
@@ -98,7 +98,7 @@ export default function Page() {
             } else {
                 setVerificationError(result.error || 'Invalid verification code. Please try again.');
             }
-        } catch (error) {
+        } catch (error: unknown) {
             setVerificationError('An unexpected error occurred. Please try again later.');
             console.error('Error during code submission:', error);
         } finally {
