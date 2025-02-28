@@ -185,37 +185,61 @@ export function getAuthTokens() {
 }
 
 // Function to check if user is authenticated
-export async function isAuthenticated() {
+export const isAuthenticated = async (): Promise<boolean> => {
+  try {
+    // Get the token from our auth helper
     const { accessToken } = getAuthTokens();
     
     if (!accessToken) {
-        return false;
+      console.log('No access token found, user is not authenticated');
+      return false;
     }
     
-    try {
-        // Verify token with backend
-        const response = await fetch(`${API_URL}/auth/verify`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Important for CORS
-        });
-        
-        if (response.ok) {
-            return true;
-        }
-        
-        // If token is invalid, clear it
-        signOut();
-        return false;
-    } catch (error) {
-        console.error('Error verifying authentication:', error);
-        // Don't sign out on network errors to allow offline usage
-        return !!accessToken;
+    // Format the API URL correctly
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://xtxfuhrel1.execute-api.us-west-1.amazonaws.com/prod';
+    if (!apiUrl.endsWith('/')) {
+      apiUrl += '/';
     }
-}
+    
+    console.log('Using API URL:', apiUrl);
+    
+    // Call the verify endpoint
+    const verifyEndpoint = `${apiUrl}auth/verify`;
+    console.log('Calling verify endpoint:', verifyEndpoint);
+    
+    const response = await fetch(verifyEndpoint, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    console.log('Verify response status:', response.status);
+    
+    if (!response.ok) {
+      console.error('Token verification failed:', response.status);
+      // If the response is not OK, try to parse the error message
+      try {
+        const errorData = await response.json();
+        console.error('Error details:', errorData);
+      } catch (parseError) {
+        console.error('Could not parse error response');
+      }
+      return false;
+    }
+    
+    // Parse the response
+    const data = await response.json();
+    console.log('Verification response:', data);
+    
+    // Check if the token is valid
+    return data.valid === true;
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
+};
 
 // Function to sign out
 export function signOut() {
@@ -244,6 +268,7 @@ export async function authenticatedFetch(url: string, options: RequestInit = {})
     return fetch(url, {
         ...options,
         headers,
-        credentials: 'include', // Important for CORS
+        // Don't include credentials for CORS requests to avoid preflight issues
+        // credentials: 'include',
     });
 } 

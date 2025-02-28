@@ -5,7 +5,7 @@ import { useAppDispatch } from "../store/hooks";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { initiateLogin, verifyOTP } from "@/helpers/auth";
+import { initiateLogin, verifyOTP, isAuthenticated } from "@/helpers/auth";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { AlertCircle } from "lucide-react";
 
@@ -24,7 +24,7 @@ export default function Page() {
     const [isCodeSubmitting, setIsCodeSubmitting] = useState(false);
     const [emailError, setEmailError] = useState<string | null>(null);
     const [verificationError, setVerificationError] = useState<string | null>(null);
-
+    
     const cardTitle = "ASA Racing Login";
     
     const validateEmail = (value: string): boolean => {
@@ -83,24 +83,59 @@ export default function Page() {
     const handleCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setVerificationError(null);
-
+        
         if (code.length !== MAX_CODE_LENGTH) {
             setVerificationError(`Verification code must be ${MAX_CODE_LENGTH} digits`);
             return;
         }
-
+        
         setIsCodeSubmitting(true);
+        
         try {
+            console.log('Verifying OTP code:', code);
+            
+            // Verify the OTP code using our existing function
             const result = await verifyOTP(email, code, session || '');
-            if (result.success) {
-                dispatch(setUser({ id: '1', email: email }));
-                router.push('/admin');
+            console.log('OTP verification result:', result);
+            
+            if (result.success && result.accessToken) {
+                console.log('OTP verification successful');
+                
+                // The verifyOTP function already stores the token in localStorage and memory
+                console.log('Token stored by verifyOTP function');
+                
+                // Check if the user is authenticated with the API
+                try {
+                    const isAuth = await isAuthenticated();
+                    console.log('Authentication check result:', isAuth);
+                    
+                    if (isAuth) {
+                        console.log('User is authenticated with API');
+                        
+                        // Dispatch user to Redux store
+                        // We don't have user details from the token yet, so use email
+                        dispatch(setUser({
+                            id: email, // Using email as ID for now
+                            email: email,
+                        }));
+                        
+                        // Redirect to admin page
+                        router.push('/admin');
+                    } else {
+                        console.error('API authentication failed');
+                        setVerificationError('Authentication failed. Please try again.');
+                    }
+                } catch (authError) {
+                    console.error('Error checking authentication:', authError);
+                    setVerificationError('Authentication check failed. Please try again.');
+                }
             } else {
+                console.error('OTP verification failed');
                 setVerificationError(result.error || 'Invalid verification code. Please try again.');
             }
-        } catch (error: unknown) {
-            setVerificationError('An unexpected error occurred. Please try again later.');
-            console.error('Error during code submission:', error);
+        } catch (error) {
+            console.error('Error during OTP verification:', error);
+            setVerificationError('Verification failed. Please try again.');
         } finally {
             setIsCodeSubmitting(false);
         }

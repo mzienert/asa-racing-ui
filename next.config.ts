@@ -19,5 +19,6 @@ const nextConfig: NextConfig = {
 console.log('Next.js Cognito Configuration:');
 console.log('User Pool ID:', nextConfig.env?.NEXT_PUBLIC_COGNITO_USER_POOL_ID);
 console.log('Client ID:', nextConfig.env?.NEXT_PUBLIC_COGNITO_CLIENT_ID);
+console.log('API URL:', nextConfig.env?.NEXT_PUBLIC_API_URL);
 
 export default nextConfig;
