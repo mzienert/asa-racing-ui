@@ -6,61 +6,71 @@ import {
   selectHasActiveRace, 
   selectRaceClasses,
   selectRacersByAllClasses,
+  selectActiveRace,
 } from '@/app/store/selectors/raceSelectors';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getRacerCount } from "@/helpers/racers";
 import BracketView from './BracketView';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { RootState } from '@/app/store/store';
+import { Racer } from '@/app/store/features/racersSlice';
 
-export default function BracketsPage() {
-  //const dispatch = useDispatch<AppDispatch>();
-  const hasRace = useSelector(selectHasActiveRace);
-  const raceClasses = useSelector(selectRaceClasses);
-  const racersByClass = useSelector(selectRacersByAllClasses);
+export default function Brackets() {
+  // Use memoized selectors with proper typing
+  const raceClasses = useSelector((state: RootState) => selectRaceClasses(state));
+  const activeRace = useSelector((state: RootState) => selectActiveRace(state));
+  const racersByClass = useSelector((state: RootState) => selectRacersByAllClasses(state));
   
-  if (!hasRace) {
+  // Check if there's an active race or any races at all
+  const hasRaces = useSelector((state: RootState) => (state.races?.races || []).length > 0);
+  
+  // Handler for generating brackets
+  const handleGenerateBrackets = () => {
+    // Implement bracket generation logic here
+    console.log('Generating brackets');
+  };
+  
+  // If no races exist, show the create race message
+  if (!hasRaces) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold mb-6">Bracket Management</h1>
-        <div className="space-y-4">
-          <Card>
-            <div className="flex flex-col">
-              <CardHeader>
-                <p className="text-muted-foreground">Manage your race brackets here.</p>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center">
-                <p className="text-muted-foreground">Please create a race first</p>
-              </CardContent>
-            </div>
-          </Card>
-        </div>
+      <div className="flex flex-col items-center justify-center h-64">
+        <h2 className="text-xl font-semibold mb-4">No Races Available</h2>
+        <p className="text-gray-600 mb-6">Please create a race first to manage brackets.</p>
+        <Link href="/admin/races/create">
+          <Button>Create Race</Button>
+        </Link>
       </div>
     );
   }
-
+  
+  // Rest of your component that displays brackets
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Bracket Management</h1>
-      <Tabs defaultValue={raceClasses[0]} className="w-full">
-        <TabsList className="w-full justify-start">
-          {raceClasses.map((raceClass) => (
-            <TabsTrigger key={raceClass} value={raceClass}>
-              {raceClass} ({getRacerCount(racersByClass[raceClass])})
-            </TabsTrigger>
+      <h1 className="text-2xl font-bold mb-6">Brackets</h1>
+      
+      {/* Display brackets by class */}
+      {raceClasses && raceClasses.length > 0 ? (
+        <div>
+          {/* Your bracket display logic here */}
+          {raceClasses.map((className: string) => (
+            <div key={className} className="mb-8">
+              <h2 className="text-xl font-semibold mb-4">{className} Bracket</h2>
+              {/* Bracket visualization component */}
+              {racersByClass && racersByClass[className] && (
+                <BracketView racers={racersByClass[className]} />
+              )}
+            </div>
           ))}
-        </TabsList>
-        {raceClasses.map((raceClass) => (
-          <TabsContent key={raceClass} value={raceClass}>
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold">{raceClass} Bracket</h2>
-              </CardHeader>
-              <CardContent>
-                <BracketView racers={racersByClass[raceClass]} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+        </div>
+      ) : (
+        <p className="text-gray-500">No race classes defined yet.</p>
+      )}
+      
+      {/* Generate Brackets button */}
+      <div className="mt-8">
+        <Button onClick={handleGenerateBrackets}>Generate Brackets</Button>
+      </div>
     </div>
   );
 }

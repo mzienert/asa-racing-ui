@@ -1,62 +1,70 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 
 export interface Racer {
   id: string;
   name: string;
   bibNumber: string;
   classId: string;
-  position: number;
 }
 
 interface RacersState {
-  racers: Record<string, Racer[]>;
+  items: Racer[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: RacersState = {
-  racers: {},
+  items: [],
   loading: false,
   error: null
+};
+
+// Helper function to get racers from localStorage
+const getRacersFromStorage = (): Racer[] => {
+  try {
+    const storedData = localStorage.getItem('racers');
+    if (!storedData) return [];
+    
+    const parsedData = JSON.parse(storedData);
+    return Array.isArray(parsedData) ? parsedData : [];
+  } catch (e) {
+    console.error('Error parsing racers from localStorage:', e);
+    return [];
+  }
 };
 
 export const loadRacersFromStorage = createAsyncThunk(
   'racers/loadFromStorage',
   async () => {
-    const storedRacers = localStorage.getItem('racers');
-    return storedRacers ? JSON.parse(storedRacers) : {};
+    return getRacersFromStorage();
   }
 );
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
-  async (racer: Omit<Racer, 'id' | 'position'>, { rejectWithValue }) => {
-    const storedRacers = localStorage.getItem('racers');
-    const racers = storedRacers ? JSON.parse(storedRacers) : {};
-    
-    // Check for duplicate bib number and get existing racer's name
-    const allRacers = Object.values(racers).flat() as Racer[];
-    const existingRacer = allRacers.find(r => r.bibNumber === racer.bibNumber);
+  async (racer: Omit<Racer, 'id'>, { rejectWithValue, getState }) => {
+    // Check if a racer with this bib number already exists
+    const state = getState() as { racers: RacersState };
+    const existingRacer = state.racers.items.find(r => r.bibNumber === racer.bibNumber);
     
     if (existingRacer) {
-      return rejectWithValue({
-        message: 'Duplicate bib number',
-        existingRacer
-      });
+      return rejectWithValue({ existingRacer });
     }
-
-    if (!racers[racer.classId]) {
-      racers[racer.classId] = [];
-    }
-
+    
     const newRacer = {
       ...racer,
-      id: crypto.randomUUID(),
-      position: racers[racer.classId].length + 1
+      id: crypto.randomUUID()
     };
     
-    racers[racer.classId].push(newRacer);
+    // Get existing racers
+    const racers = getRacersFromStorage();
+    
+    // Add the new racer
+    racers.push(newRacer);
+    
+    // Store in localStorage
     localStorage.setItem('racers', JSON.stringify(racers));
+    
     return newRacer;
   }
 );
@@ -64,12 +72,11 @@ export const persistRacer = createAsyncThunk(
 export const updatePersistedRacer = createAsyncThunk(
   'racers/updatePersistedRacer',
   async (racer: Racer) => {
-    const storedRacers = localStorage.getItem('racers');
-    const racers = storedRacers ? JSON.parse(storedRacers) : {};
+    const racers = getRacersFromStorage();
     
-    const racerIndex = racers[racer.classId]?.findIndex((r: Racer) => r.id === racer.id);
-    if (racerIndex !== undefined && racerIndex !== -1) {
-      racers[racer.classId][racerIndex] = racer;
+    const racerIndex = racers.findIndex(r => r.id === racer.id);
+    if (racerIndex !== -1) {
+      racers[racerIndex] = racer;
       localStorage.setItem('racers', JSON.stringify(racers));
     }
     
@@ -79,12 +86,11 @@ export const updatePersistedRacer = createAsyncThunk(
 
 export const deletePersistedRacer = createAsyncThunk(
   'racers/deletePersistedRacer',
-  async ({ id, classId }: Pick<Racer, 'id' | 'classId'>) => {
-    const storedRacers = localStorage.getItem('racers');
-    const racers = storedRacers ? JSON.parse(storedRacers) : {};
+  async ({ id, classId }: { id: string, classId: string }) => {
+    const racers = getRacersFromStorage();
     
-    racers[classId] = racers[classId].filter((r: Racer) => r.id !== id);
-    localStorage.setItem('racers', JSON.stringify(racers));
+    const filteredRacers = racers.filter(r => r.id !== id);
+    localStorage.setItem('racers', JSON.stringify(filteredRacers));
     
     return { id, classId };
   }
@@ -101,7 +107,7 @@ const racersSlice = createSlice({
         state.error = null;
       })
       .addCase(loadRacersFromStorage.fulfilled, (state, action) => {
-        state.racers = action.payload;
+        state.items = action.payload;
         state.loading = false;
       })
       .addCase(loadRacersFromStorage.rejected, (state, action) => {
@@ -109,22 +115,16 @@ const racersSlice = createSlice({
         state.error = action.error.message || 'Failed to load racers';
       })
       .addCase(persistRacer.fulfilled, (state, action) => {
-        const { classId } = action.payload;
-        if (!state.racers[classId]) {
-          state.racers[classId] = [];
-        }
-        state.racers[classId].push(action.payload);
+        state.items.push(action.payload);
       })
       .addCase(updatePersistedRacer.fulfilled, (state, action) => {
-        const { id, classId } = action.payload;
-        const racerIndex = state.racers[classId]?.findIndex(racer => racer.id === id);
-        if (racerIndex !== undefined && racerIndex !== -1) {
-          state.racers[classId][racerIndex] = action.payload;
+        const index = state.items.findIndex(racer => racer.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
         }
       })
       .addCase(deletePersistedRacer.fulfilled, (state, action) => {
-        const { id, classId } = action.payload;
-        state.racers[classId] = state.racers[classId].filter(racer => racer.id !== id);
+        state.items = state.items.filter(racer => racer.id !== action.payload.id);
       });
   }
 });

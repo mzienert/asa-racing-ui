@@ -4,32 +4,46 @@ export interface Race {
   id: string;
   name: string;
   date: string;
-  location: string;
-  classes: string[];
-  status: 'upcoming' | 'in-progress' | 'completed';
+  raceFormat?: string;
+  raceClasses: string[];
+  completed?: boolean;
 }
 
+// Change the state structure to be flat - races is now the array directly
 interface RacesState {
-  races: Race[];
+  items: Race[]; // Changed from 'races' to 'items' to avoid confusion
   currentRace: Race | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: RacesState = {
-  races: [],
+  items: [], // Changed from 'races' to 'items'
   currentRace: null,
   loading: false,
   error: null
 };
 
+// Simple function to get races from localStorage as an array
+const getRacesFromStorage = (): Race[] => {
+  try {
+    const storedData = localStorage.getItem('races');
+    if (!storedData) return [];
+    
+    const parsedData = JSON.parse(storedData);
+    return Array.isArray(parsedData) ? parsedData : [];
+  } catch (e) {
+    console.error('Error parsing races from localStorage:', e);
+    return [];
+  }
+};
+
 export const loadRacesFromStorage = createAsyncThunk(
   'races/loadFromStorage',
   async () => {
-    const storedRaces = localStorage.getItem('races');
-    const currentRaceId = localStorage.getItem('currentRaceId');
+    const races = getRacesFromStorage();
     
-    const races = storedRaces ? JSON.parse(storedRaces) : [];
+    const currentRaceId = localStorage.getItem('currentRaceId');
     const currentRace = currentRaceId && races.length > 0 
       ? races.find((race: Race) => race.id === currentRaceId) || null
       : null;
@@ -41,16 +55,21 @@ export const loadRacesFromStorage = createAsyncThunk(
 export const persistRace = createAsyncThunk(
   'races/persistRace',
   async (race: Omit<Race, 'id'>) => {
-    const storedRaces = localStorage.getItem('races');
-    const races = storedRaces ? JSON.parse(storedRaces) : [];
-    
+    // Create the new race with an ID
     const newRace = {
       ...race,
       id: crypto.randomUUID()
     };
     
+    // Get existing races as a simple array
+    const races = getRacesFromStorage();
+    
+    // Add the new race
     races.push(newRace);
+    
+    // Store as a simple array
     localStorage.setItem('races', JSON.stringify(races));
+    
     return newRace;
   }
 );
@@ -58,8 +77,7 @@ export const persistRace = createAsyncThunk(
 export const updatePersistedRace = createAsyncThunk(
   'races/updatePersistedRace',
   async (race: Race) => {
-    const storedRaces = localStorage.getItem('races');
-    const races = storedRaces ? JSON.parse(storedRaces) : [];
+    const races = getRacesFromStorage();
     
     const raceIndex = races.findIndex((r: Race) => r.id === race.id);
     if (raceIndex !== -1) {
@@ -74,8 +92,7 @@ export const updatePersistedRace = createAsyncThunk(
 export const deletePersistedRace = createAsyncThunk(
   'races/deletePersistedRace',
   async (id: string) => {
-    const storedRaces = localStorage.getItem('races');
-    const races = storedRaces ? JSON.parse(storedRaces) : [];
+    const races = getRacesFromStorage();
     
     const filteredRaces = races.filter((r: Race) => r.id !== id);
     localStorage.setItem('races', JSON.stringify(filteredRaces));
@@ -107,7 +124,7 @@ const racesSlice = createSlice({
         state.error = null;
       })
       .addCase(loadRacesFromStorage.fulfilled, (state, action) => {
-        state.races = action.payload.races;
+        state.items = action.payload.races; // Changed from 'races' to 'items'
         state.currentRace = action.payload.currentRace;
         state.loading = false;
       })
@@ -116,26 +133,26 @@ const racesSlice = createSlice({
         state.error = action.error.message || 'Failed to load races';
       })
       .addCase(persistRace.fulfilled, (state, action) => {
-        state.races.push(action.payload);
+        state.items.push(action.payload); // Changed from 'races' to 'items'
       })
       .addCase(updatePersistedRace.fulfilled, (state, action) => {
-        const index = state.races.findIndex(race => race.id === action.payload.id);
+        const index = state.items.findIndex(race => race.id === action.payload.id); // Changed from 'races' to 'items'
         if (index !== -1) {
-          state.races[index] = action.payload;
+          state.items[index] = action.payload; // Changed from 'races' to 'items'
         }
         if (state.currentRace?.id === action.payload.id) {
           state.currentRace = action.payload;
         }
       })
       .addCase(deletePersistedRace.fulfilled, (state, action) => {
-        state.races = state.races.filter(race => race.id !== action.payload);
+        state.items = state.items.filter(race => race.id !== action.payload); // Changed from 'races' to 'items'
         if (state.currentRace?.id === action.payload) {
           state.currentRace = null;
         }
       })
       .addCase(setCurrentRace.fulfilled, (state, action) => {
         if (action.payload) {
-          state.currentRace = state.races.find(race => race.id === action.payload) || null;
+          state.currentRace = state.items.find(race => race.id === action.payload) || null; // Changed from 'races' to 'items'
         } else {
           state.currentRace = null;
         }
