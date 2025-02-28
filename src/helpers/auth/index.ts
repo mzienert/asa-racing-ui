@@ -21,6 +21,8 @@ const cognitoClient = new CognitoIdentityProviderClient({
     region: 'us-west-1', // Make sure this matches your Cognito region
 });
 
+
+
 // Function to initiate login
 export async function initiateLogin(email: string) {
     try {
