@@ -3,7 +3,6 @@ import { CognitoIdentityProviderClient, InitiateAuthCommand, RespondToAuthChalle
 // Check for required environment variables
 const COGNITO_USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Log the Cognito configuration for debugging
 console.log('Auth Helper - Cognito Configuration:');
@@ -224,7 +223,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
         const errorData = await response.json();
         console.error('Error details:', errorData);
       } catch (parseError) {
-        console.error('Could not parse error response');
+        console.error('Could not parse error response', parseError);
       }
       return false;
     }
