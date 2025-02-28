@@ -67,10 +67,10 @@ export default function Page() {
         try {
             const result = await initiateLogin(email);
             if (result.success) {
-                setSession(result.sessionData as string);
+                setSession(result.session as string);
                 setShowCode(true);
             } else {
-                setEmailError(result.message || 'Email not found. Please check and try again.');
+                setEmailError(result.error || 'Email not found. Please check and try again.');
             }
         } catch (error) {
             setEmailError(`An unexpected error occurred. Please try again later.`);
@@ -91,12 +91,12 @@ export default function Page() {
 
         setIsCodeSubmitting(true);
         try {
-            const result = await verifyOTP(email, code, session);
+            const result = await verifyOTP(email, code, session || '');
             if (result.success) {
                 dispatch(setUser({ id: '1', email: email }));
                 router.push('/admin');
             } else {
-                setVerificationError(result.message || 'Invalid verification code. Please try again.');
+                setVerificationError(result.error || 'Invalid verification code. Please try again.');
             }
         } catch (error) {
             setVerificationError('An unexpected error occurred. Please try again later.');

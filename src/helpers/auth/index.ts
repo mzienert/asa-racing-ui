@@ -5,6 +5,11 @@ const COGNITO_USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Log the Cognito configuration for debugging
+console.log('Auth Helper - Cognito Configuration:');
+console.log('User Pool ID:', COGNITO_USER_POOL_ID);
+console.log('Client ID:', COGNITO_CLIENT_ID);
+
 if (!COGNITO_USER_POOL_ID || !COGNITO_CLIENT_ID) {
     console.error('Missing required environment variables: NEXT_PUBLIC_COGNITO_USER_POOL_ID or NEXT_PUBLIC_COGNITO_CLIENT_ID');
 }
@@ -20,6 +25,9 @@ const cognitoClient = new CognitoIdentityProviderClient({
 // Function to initiate login
 export async function initiateLogin(email: string) {
     try {
+        // Log the client ID being used for this request
+        console.log('Initiating login with Client ID:', COGNITO_CLIENT_ID);
+        
         const command = new InitiateAuthCommand({
             AuthFlow: 'CUSTOM_AUTH',
             ClientId: COGNITO_CLIENT_ID,
@@ -61,6 +69,9 @@ export async function initiateLogin(email: string) {
 // Function to verify OTP
 export async function verifyOTP(email: string, otp: string, session: string) {
     try {
+        // Log the client ID being used for this request
+        console.log('Verifying OTP with Client ID:', COGNITO_CLIENT_ID);
+        
         const command = new RespondToAuthChallengeCommand({
             ChallengeName: 'CUSTOM_CHALLENGE',
             ClientId: COGNITO_CLIENT_ID,
