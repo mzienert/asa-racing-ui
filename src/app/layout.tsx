@@ -5,6 +5,7 @@ import "./globals.css";
 
 import { Providers } from './providers'
 import { Toaster } from 'sonner'
+import StoreInitializer from '../components/StoreInitializer'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <Providers>
+          <StoreInitializer />
           <div className="min-h-screen">
             <main>
               {children}

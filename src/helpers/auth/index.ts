@@ -18,17 +18,12 @@ let memoryTokens: { accessToken?: string; refreshToken?: string } = {};
 
 // Initialize Cognito client
 const cognitoClient = new CognitoIdentityProviderClient({
-    region: 'us-west-1', // Make sure this matches your Cognito region
+    region: 'us-west-1',
 });
-
-
 
 // Function to initiate login
 export async function initiateLogin(email: string) {
     try {
-        // Log the client ID being used for this request
-        console.log('Initiating login with Client ID:', COGNITO_CLIENT_ID);
-        
         const command = new InitiateAuthCommand({
             AuthFlow: 'CUSTOM_AUTH',
             ClientId: COGNITO_CLIENT_ID,
@@ -38,16 +33,13 @@ export async function initiateLogin(email: string) {
         });
 
         const response = await cognitoClient.send(command);
-        console.log('Login initiated successfully:', response);
-        
+
         return {
             success: true,
             session: response.Session,
             challengeName: response.ChallengeName,
         };
-    } catch (error: unknown) {
-        console.error('Error initiating login:', error);
-        
+    } catch (error: unknown) {   
         // Type guard for error object
         if (error && typeof error === 'object' && 'name' in error) {
             if (error.name === 'NotAuthorizedException') {
@@ -81,9 +73,6 @@ export async function initiateLogin(email: string) {
 // Function to verify OTP
 export async function verifyOTP(email: string, otp: string, session: string) {
     try {
-        // Log the client ID being used for this request
-        console.log('Verifying OTP with Client ID:', COGNITO_CLIENT_ID);
-        
         const command = new RespondToAuthChallengeCommand({
             ChallengeName: 'CUSTOM_CHALLENGE',
             ClientId: COGNITO_CLIENT_ID,
@@ -95,7 +84,6 @@ export async function verifyOTP(email: string, otp: string, session: string) {
         });
 
         const response = await cognitoClient.send(command);
-        console.log('OTP verification response:', response);
 
         if (response.AuthenticationResult) {
             const { AccessToken, RefreshToken } = response.AuthenticationResult;
@@ -132,8 +120,6 @@ export async function verifyOTP(email: string, otp: string, session: string) {
             error: 'Verification failed',
         };
     } catch (error: unknown) {
-        console.error('Error verifying OTP:', error);
-        
         // Type guard for error object
         if (error && typeof error === 'object' && 'name' in error) {
             if (error.name === 'CodeMismatchException') {
@@ -201,13 +187,10 @@ export const isAuthenticated = async (): Promise<boolean> => {
     if (!apiUrl.endsWith('/')) {
       apiUrl += '/';
     }
-    
-    console.log('Using API URL:', apiUrl);
-    
+
     // Call the verify endpoint
     const verifyEndpoint = `${apiUrl}auth/verify`;
-    console.log('Calling verify endpoint:', verifyEndpoint);
-    
+
     const response = await fetch(verifyEndpoint, {
       method: 'GET',
       headers: {
@@ -216,8 +199,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
       }
     });
     
-    console.log('Verify response status:', response.status);
-    
+
     if (!response.ok) {
       console.error('Token verification failed:', response.status);
       // If the response is not OK, try to parse the error message
@@ -232,8 +214,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
     
     // Parse the response
     const data = await response.json();
-    console.log('Verification response:', data);
-    
+
     // Check if the token is valid
     return data.valid === true;
   } catch (error) {

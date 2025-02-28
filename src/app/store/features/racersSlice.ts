@@ -10,10 +10,14 @@ export interface Racer {
 
 interface RacersState {
   racers: Record<string, Racer[]>;
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: RacersState = {
-  racers: {}
+  racers: {},
+  loading: false,
+  error: null
 };
 
 export const loadRacersFromStorage = createAsyncThunk(
@@ -92,8 +96,17 @@ const racersSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(loadRacersFromStorage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(loadRacersFromStorage.fulfilled, (state, action) => {
         state.racers = action.payload;
+        state.loading = false;
+      })
+      .addCase(loadRacersFromStorage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to load racers';
       })
       .addCase(persistRacer.fulfilled, (state, action) => {
         const { classId } = action.payload;
