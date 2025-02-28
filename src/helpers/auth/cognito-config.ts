@@ -5,11 +5,6 @@ const createUserPool = () => {
         return null;
     }
 
-    // Log the Cognito configuration values
-    console.log('Cognito Config - Creating User Pool with:');
-    console.log('User Pool ID:', process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID);
-    console.log('Client ID:', process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID);
-
     if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || !process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID) {
         console.error('Environment variables not found:', {
             userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
@@ -24,7 +19,6 @@ const createUserPool = () => {
             ClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
         });
         
-        console.log('User pool created successfully');
         return userPool;
     } catch (error) {
         console.error('Error creating Cognito User Pool:', error);

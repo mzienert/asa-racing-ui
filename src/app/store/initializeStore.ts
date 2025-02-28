@@ -12,15 +12,9 @@ export const initializeStore = async (dispatch: AppDispatch) => {
   try {
     // Check if we have a token in localStorage before dispatching
     const token = localStorage.getItem('accessToken');
-    
-    console.log('Token found in localStorage:', !!token);
-    console.log('Available localStorage keys:', Object.keys(localStorage));
-    
+
     if (token) {
       await dispatch(loadAuthFromStorage()).unwrap();
-      console.log('Authentication loaded successfully from storage');
-    } else {
-      console.log('No token found in localStorage');
     }
   } catch (error) {
     console.error('Authentication loading failed:', error);

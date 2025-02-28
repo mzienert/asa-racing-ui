@@ -4,11 +4,6 @@ import { CognitoIdentityProviderClient, InitiateAuthCommand, RespondToAuthChalle
 const COGNITO_USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
 
-// Log the Cognito configuration for debugging
-console.log('Auth Helper - Cognito Configuration:');
-console.log('User Pool ID:', COGNITO_USER_POOL_ID);
-console.log('Client ID:', COGNITO_CLIENT_ID);
-
 if (!COGNITO_USER_POOL_ID || !COGNITO_CLIENT_ID) {
     console.error('Missing required environment variables: NEXT_PUBLIC_COGNITO_USER_POOL_ID or NEXT_PUBLIC_COGNITO_CLIENT_ID');
 }
@@ -178,7 +173,6 @@ export const isAuthenticated = async (): Promise<boolean> => {
     const { accessToken } = getAuthTokens();
     
     if (!accessToken) {
-      console.log('No access token found, user is not authenticated');
       return false;
     }
     

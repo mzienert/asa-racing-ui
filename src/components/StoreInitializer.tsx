@@ -15,10 +15,8 @@ const StoreInitializer: React.FC = () => {
   useEffect(() => {
     // Only run once and only on the client side
     if (!initialized && typeof window !== 'undefined') {
-      console.log('Initializing store from localStorage...');
       initializeStore(dispatch)
         .then(() => {
-          console.log('Store initialization complete');
           setInitialized(true);
         })
         .catch(error => {

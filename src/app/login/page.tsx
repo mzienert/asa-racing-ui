@@ -91,31 +91,20 @@ export default function Page() {
         
         setIsCodeSubmitting(true);
         
-        try {
-            console.log('Verifying OTP code:', code);
-            
+        try { 
             // Verify the OTP code using our existing function
             const result = await verifyOTP(email, code, session || '');
-            console.log('OTP verification result:', result);
-            
-            if (result.success && result.accessToken) {
-                console.log('OTP verification successful');
-                
-                // The verifyOTP function already stores the token in localStorage and memory
-                console.log('Token stored by verifyOTP function');
-                
+
+            if (result.success && result.accessToken) {         
                 // Check if the user is authenticated with the API
                 try {
                     const isAuth = await isAuthenticated();
-                    console.log('Authentication check result:', isAuth);
                     
                     if (isAuth) {
-                        console.log('User is authenticated with API');
-                        
                         // Dispatch user to Redux store
                         // We don't have user details from the token yet, so use email
                         dispatch(setUser({
-                            id: email, // Using email as ID for now
+                            id: email, // Using email as ID
                             email: email,
                         }));
                         

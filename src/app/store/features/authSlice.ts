@@ -71,14 +71,10 @@ export const loadAuthFromStorage = createAsyncThunk(
       const token = localStorage.getItem('accessToken');
       
       if (!token) {
-        console.log('Available localStorage keys:', Object.keys(localStorage));
         return rejectWithValue('No token found');
       }
       
-      console.log('Token found, checking expiration...');
-      
       if (isTokenExpired(token)) {
-        console.log('Token is expired, removing from localStorage');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('jwt');
         return rejectWithValue('Token expired');
@@ -86,7 +82,6 @@ export const loadAuthFromStorage = createAsyncThunk(
       
       // Extract user info from token
       const userData = parseJwt(token);
-      console.log('Decoded token data:', userData ? 'success' : 'failed');
       
       if (!userData) {
         return rejectWithValue('Invalid token');

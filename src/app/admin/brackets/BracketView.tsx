@@ -154,9 +154,6 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
     const activeId = active.id;
     const overId = over.id;
 
-    console.log('Before move - Groups:', firstRoundGroups.map(g => g.length));
-    console.log('Moving racer:', activeId, 'to group with:', overId);
-
     const activeGroupIndex = firstRoundGroups.findIndex(group => 
       group.some(racer => racer.id === activeId)
     );
@@ -170,11 +167,6 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
       const newGroups = JSON.parse(JSON.stringify(prevGroups));
       const activeGroup = newGroups[activeGroupIndex];
       const overGroup = newGroups[overGroupIndex];
-      
-      console.log('Initial state:', {
-        activeGroup: activeGroup.map((r: Racer) => r.id),
-        overGroup: overGroup.map((r: Racer) => r.id)
-      });
 
       if (activeGroupIndex === overGroupIndex) {
         // Same group logic remains unchanged
