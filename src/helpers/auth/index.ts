@@ -1,238 +1,158 @@
-import { CognitoUser, CognitoUserSession, AuthenticationDetails } from 'amazon-cognito-identity-js';
-import { userPool } from './cognito-config';
+import { CognitoIdentityProviderClient, InitiateAuthCommand, RespondToAuthChallengeCommand } from '@aws-sdk/client-cognito-identity-provider';
 
-if (!process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || !process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID) {
-    console.error('Environment variables not found:', {
-        userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
-        clientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
-    });
-    throw new Error('Cognito configuration missing. Please check your environment variables.');
+// Check for required environment variables
+const COGNITO_USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
+const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+if (!COGNITO_USER_POOL_ID || !COGNITO_CLIENT_ID) {
+    console.error('Missing required environment variables: NEXT_PUBLIC_COGNITO_USER_POOL_ID or NEXT_PUBLIC_COGNITO_CLIENT_ID');
 }
 
-type AuthError = {
-    name: string;
-    message: string;
-};
+// Memory storage for tokens
+let memoryTokens: { accessToken?: string; refreshToken?: string } = {};
 
-type AuthResponse = {
-    success: boolean;
-    message: string;
-    sessionData?: string;
-};
+// Initialize Cognito client
+const cognitoClient = new CognitoIdentityProviderClient({
+    region: 'us-west-1', // Make sure this matches your Cognito region
+});
 
-type CognitoUserWithSession = CognitoUser & {
-    Session: string;
-};
-
-type InitAuthResult = {
-    cognitoUser: CognitoUserWithSession;
-    session?: CognitoUserSession;
-    challengeParameters?: Record<string, string>;
-};
-
-// Store tokens in memory for the current session
-let currentTokens: {
-    accessToken?: string;
-    idToken?: string;
-} = {};
-
-function getApiUrl() {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    // Just use the raw API Gateway URL
-    return baseUrl;
-}
-
-export async function initiateLogin(email: string): Promise<AuthResponse> {
+// Function to initiate login
+export async function initiateLogin(email: string) {
     try {
-        if (!userPool) {
-            return {
-                success: false,
-                message: 'Authentication service not available'
-            };
-        }
-
-        const normalizedEmail = email.toLowerCase();
-        
-        const cognitoUser = new CognitoUser({
-            Username: normalizedEmail,
-            Pool: userPool!
-        }) as CognitoUserWithSession;
-        
-        const result = await new Promise<InitAuthResult>((resolve, reject) => {
-            cognitoUser.initiateAuth(new AuthenticationDetails({
-                Username: normalizedEmail,
-                ValidationData: {
-                    'CUSTOM_CHALLENGE': 'INIT'
-                }
-            }), {
-                onSuccess: (session) => resolve({ cognitoUser, session }),
-                onFailure: reject,
-                customChallenge: (challengeParameters) => resolve({ cognitoUser, challengeParameters })
-            });
+        const command = new InitiateAuthCommand({
+            AuthFlow: 'CUSTOM_AUTH',
+            ClientId: COGNITO_CLIENT_ID,
+            AuthParameters: {
+                USERNAME: email,
+            },
         });
 
+        const response = await cognitoClient.send(command);
+        console.log('Login initiated successfully:', response);
+        
         return {
             success: true,
-            message: 'OTP sent to email',
-            sessionData: result.cognitoUser.Session
+            session: response.Session,
+            challengeName: response.ChallengeName,
         };
-    } catch (error: unknown) {
-        const authError = error as AuthError;
-        // Handle specific Cognito errors
-        if (authError.name === 'NotAuthorizedException') {
+    } catch (error: any) {
+        console.error('Error initiating login:', error);
+        
+        if (error.name === 'NotAuthorizedException') {
             return {
                 success: false,
-                message: 'Email not found. Please check and try again.'
+                error: 'Invalid credentials',
             };
-        }
-        if (authError.name === 'UserNotFoundException') {
+        } else if (error.name === 'UserNotFoundException') {
             return {
                 success: false,
-                message: 'Email not found. Please check and try again.'
+                error: 'User not found',
             };
         }
-        // Log unexpected errors but return a user-friendly message
-        console.error('Unexpected auth error:', authError);
+        
         return {
             success: false,
-            message: 'Unable to process request. Please try again later.'
+            error: error.message || 'An error occurred during login',
         };
     }
 }
 
-// TODO: Fix session handling for multiple verification attempts
-// Currently, the session is not properly maintained between failed verification attempts,
-// forcing users to request a new code after an incorrect attempt.
-// Bug: https://linear.app/megatron/issue/MEG-16/fix-session-when-user-enters-invalid-auth-code
-
-export async function verifyOTP(email: string, otp: string, sessionData: string | null): Promise<AuthResponse> {
-    console.log('Starting verifyOTP with session:', !!sessionData);
-    
-    if (!sessionData) {
-        return {
-            success: false,
-            message: 'Session expired. Please request a new code.'
-        };
-    }
-
+// Function to verify OTP
+export async function verifyOTP(email: string, otp: string, session: string) {
     try {
-        const normalizedEmail = email.toLowerCase();
-        const cognitoUser = new CognitoUser({
-            Username: normalizedEmail,
-            Pool: userPool!
+        const command = new RespondToAuthChallengeCommand({
+            ChallengeName: 'CUSTOM_CHALLENGE',
+            ClientId: COGNITO_CLIENT_ID,
+            ChallengeResponses: {
+                USERNAME: email,
+                ANSWER: otp,
+            },
+            Session: session,
         });
 
-        // Set the raw session string
-        (cognitoUser as unknown as CognitoUserWithSession).Session = sessionData;
-        
-        const result = await new Promise<CognitoUserSession>((resolve, reject) => {
-            cognitoUser.sendCustomChallengeAnswer(otp, {
-                onSuccess: (session: CognitoUserSession) => resolve(session),
-                onFailure: (err: AuthError) => {
-                    if (err.message === 'Incorrect username or password.') {
-                        (cognitoUser as unknown as CognitoUserWithSession).Session = sessionData;
-                    }
-                    reject(err);
-                }
-            });
-        });
+        const response = await cognitoClient.send(command);
+        console.log('OTP verification response:', response);
 
-        const accessToken = result.getAccessToken().getJwtToken();
-        const idToken = result.getIdToken().getJwtToken();
-        
-        console.log('Tokens received from Cognito, storing in memory...');
-        
-        // Store tokens in memory for this session
-        currentTokens = {
-            accessToken,
-            idToken
-        };
-        
-        // Also store in localStorage for persistence across page refreshes
-        if (typeof window !== 'undefined') {
-            try {
-                localStorage.setItem('accessToken', accessToken);
-                localStorage.setItem('idToken', idToken);
-                console.log('Tokens stored in localStorage');
-            } catch (e) {
-                console.error('Failed to store tokens in localStorage:', e);
-            }
-        }
-        
-        // Try to verify the tokens, but don't fail if the verify endpoint is not available yet
-        try {
-            console.log('Verifying tokens...');
-            const apiUrl = getApiUrl();
-            const verifyResponse = await fetch(`${apiUrl}/auth/verify`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
+        if (response.AuthenticationResult) {
+            const { AccessToken, RefreshToken } = response.AuthenticationResult;
             
-            console.log('Verify response status:', verifyResponse.status);
+            // Store tokens in memory
+            memoryTokens = {
+                accessToken: AccessToken,
+                refreshToken: RefreshToken,
+            };
             
-            if (!verifyResponse.ok) {
-                const errorData = await verifyResponse.json();
-                console.warn('Token verification failed, but continuing anyway:', errorData);
-                // Don't return an error here, just log it
-            } else {
-                console.log('Token verification successful');
+            // Also store in localStorage for persistence
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('accessToken', AccessToken || '');
+                localStorage.setItem('refreshToken', RefreshToken || '');
             }
-        } catch (verifyError) {
-            // If the verify endpoint is not available yet, just log the error and continue
-            console.warn('Error verifying token, but continuing anyway:', verifyError);
-        }
-        
-        // Return success even if token verification failed
-        // This allows the user to log in even if the verify endpoint is not available yet
-        return {
-            success: true,
-            message: 'Login successful'
-        };
-    } catch (error: unknown) {
-        const authError = error as AuthError;
-        console.log('Caught error:', authError.name, authError.message);
-        
-        if (authError.message === 'Incorrect username or password.') {
+            
+            return {
+                success: true,
+                accessToken: AccessToken,
+                refreshToken: RefreshToken,
+            };
+        } else if (response.ChallengeName) {
+            // Still in challenge flow
             return {
                 success: false,
-                message: 'Incorrect verification code. Please try again.'
+                challengeName: response.ChallengeName,
+                session: response.Session,
+                error: 'Additional challenge required',
             };
         }
-
+        
         return {
             success: false,
-            message: 'Session expired. Please request a new code.'
+            error: 'Verification failed',
+        };
+    } catch (error: any) {
+        console.error('Error verifying OTP:', error);
+        
+        if (error.name === 'CodeMismatchException') {
+            return {
+                success: false,
+                error: 'Incorrect verification code',
+            };
+        } else if (error.name === 'ExpiredCodeException') {
+            return {
+                success: false,
+                error: 'Verification code has expired',
+            };
+        }
+        
+        return {
+            success: false,
+            error: error.message || 'An error occurred during verification',
         };
     }
 }
 
-// Function to get the current tokens
+// Function to get auth tokens
 export function getAuthTokens() {
-    // First try to get from memory
-    if (currentTokens.accessToken && currentTokens.idToken) {
-        return currentTokens;
+    // First try memory
+    if (memoryTokens.accessToken) {
+        return memoryTokens;
     }
     
-    // If not in memory, try localStorage
+    // Then try localStorage
     if (typeof window !== 'undefined') {
         const accessToken = localStorage.getItem('accessToken');
-        const idToken = localStorage.getItem('idToken');
+        const refreshToken = localStorage.getItem('refreshToken');
         
-        if (accessToken && idToken) {
-            currentTokens = { accessToken, idToken };
-            return currentTokens;
+        if (accessToken) {
+            memoryTokens = { accessToken, refreshToken: refreshToken || undefined };
+            return memoryTokens;
         }
     }
     
-    // No tokens found
-    return { accessToken: undefined, idToken: undefined };
+    return { accessToken: undefined, refreshToken: undefined };
 }
 
 // Function to check if user is authenticated
-export async function isAuthenticated(): Promise<boolean> {
+export async function isAuthenticated() {
     const { accessToken } = getAuthTokens();
     
     if (!accessToken) {
@@ -240,47 +160,57 @@ export async function isAuthenticated(): Promise<boolean> {
     }
     
     try {
-        const apiUrl = getApiUrl();
-        const response = await fetch(`${apiUrl}/auth/verify`, {
+        // Verify token with backend
+        const response = await fetch(`${API_URL}/auth/verify`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include', // Important for CORS
         });
         
-        return response.ok;
+        if (response.ok) {
+            return true;
+        }
+        
+        // If token is invalid, clear it
+        signOut();
+        return false;
     } catch (error) {
-        console.error('Error checking authentication:', error);
-        // If the verify endpoint is not available yet, assume the user is authenticated
-        // This allows the app to work even if the verify endpoint is not deployed yet
-        return true;
+        console.error('Error verifying authentication:', error);
+        // Don't sign out on network errors to allow offline usage
+        return !!accessToken;
     }
 }
 
-export async function signOut(): Promise<{ success: boolean; message?: string }> {
-    try {
-        if (!userPool) {
-            return { success: false, message: 'Authentication service not available' };
-        }
-        const user = userPool.getCurrentUser();
-        if (user) {
-            user.signOut();
-            
-            // Clear tokens from memory
-            currentTokens = {};
-            
-            // Clear tokens from localStorage
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('idToken');
-            }
-            
-            return { success: true };
-        }
-        return { success: false, message: 'No user found' };
-    } catch (error: unknown) {
-        const authError = error as AuthError;
-        console.error('Signout error:', authError);
-        return { success: false, message: authError.message };
+// Function to sign out
+export function signOut() {
+    memoryTokens = {};
+    
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
     }
+}
+
+// Function to make authenticated API requests
+export async function authenticatedFetch(url: string, options: RequestInit = {}) {
+    const { accessToken } = getAuthTokens();
+    
+    if (!accessToken) {
+        throw new Error('Not authenticated');
+    }
+    
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+    };
+    
+    return fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Important for CORS
+    });
 } 
