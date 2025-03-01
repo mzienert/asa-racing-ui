@@ -1,6 +1,9 @@
 node_modules
 .next
+.env
 .env.local
-.next
+.env.development.local
+.env.test.local
+.env.production.local
 cdk.out
 out
