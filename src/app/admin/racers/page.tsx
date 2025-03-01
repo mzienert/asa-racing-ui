@@ -21,6 +21,18 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { loadRacesFromStorage, setCurrentRace } from '@/app/store/features/racesSlice';
+import { Users, Edit, Trash2, Plus, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface RacerFormProps {
   classId: string;
@@ -32,6 +44,8 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [name, setName] = useState(editRacer?.name || '');
   const [bibNumber, setBibNumber] = useState(editRacer?.bibNumber || '');
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [bibError, setBibError] = useState<string | null>(null);
 
   useEffect(() => {
     if (editRacer) {
@@ -40,8 +54,49 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
     }
   }, [editRacer]);
 
+  const validateName = (value: string): boolean => {
+    if (!value.trim()) {
+      setNameError('Racer name is required');
+      return false;
+    }
+    setNameError(null);
+    return true;
+  };
+
+  const validateBib = (value: string): boolean => {
+    if (!value.trim()) {
+      setBibError('Bib number is required');
+      return false;
+    }
+    if (!/^\d+$/.test(value)) {
+      setBibError('Bib number must be numeric');
+      return false;
+    }
+    setBibError(null);
+    return true;
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setName(value);
+    if (nameError) validateName(value);
+  };
+
+  const handleBibChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setBibNumber(value);
+    if (bibError) validateBib(value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const isNameValid = validateName(name);
+    const isBibValid = validateBib(bibNumber);
+
+    if (!isNameValid || !isBibValid) {
+      return;
+    }
 
     if (editRacer) {
       dispatch(updatePersistedRacer({ ...editRacer, name, bibNumber, classId }));
@@ -67,37 +122,62 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={bibNumber}
-          onChange={e => setBibNumber(e.target.value)}
-          placeholder="Bib"
-          maxLength={3}
-          className="flex h-10 w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <input
-          type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Racer Name"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-        >
+    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="w-full sm:w-1/4">
+          <label htmlFor="bibNumber" className="block text-sm font-medium mb-1">
+            Bib Number
+          </label>
+          <input
+            id="bibNumber"
+            type="text"
+            value={bibNumber}
+            onChange={handleBibChange}
+            onBlur={() => validateBib(bibNumber)}
+            placeholder="Bib #"
+            maxLength={3}
+            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+              bibError ? 'border-red-500' : 'border-input'
+            }`}
+          />
+          {bibError && (
+            <div className="flex items-center text-red-500 text-sm mt-1">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              {bibError}
+            </div>
+          )}
+        </div>
+        <div className="w-full sm:w-3/4">
+          <label htmlFor="racerName" className="block text-sm font-medium mb-1">
+            Racer Name
+          </label>
+          <input
+            id="racerName"
+            type="text"
+            value={name}
+            onChange={handleNameChange}
+            onBlur={() => validateName(name)}
+            placeholder="Racer Name"
+            className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+              nameError ? 'border-red-500' : 'border-input'
+            }`}
+          />
+          {nameError && (
+            <div className="flex items-center text-red-500 text-sm mt-1">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              {nameError}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-start space-x-2 pt-2">
+        <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
           {editRacer ? 'Update Racer' : 'Add Racer'}
-        </button>
+        </Button>
         {editRacer && (
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2"
-          >
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
-          </button>
+          </Button>
         )}
       </div>
     </form>
@@ -135,18 +215,23 @@ const Racers = () => {
 
   if (!hasRace) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold mb-6">Racer Management</h1>
+      <div className="container mx-auto px-4 py-6">
         <div className="space-y-4">
-          <Card>
+          <Card className="shadow-md">
             <div className="flex flex-col">
-              <CardHeader>
+              <CardHeader className="pb-2">
+                <h2 className="text-xl font-semibold flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-primary" /> Racer Management
+                </h2>
                 <p className="text-muted-foreground">Manage your racers here.</p>
+                <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
               </CardHeader>
-              <CardContent className="flex flex-col items-center">
-                <p className="text-muted-foreground">Please create a race first</p>
-                <Link href="/admin/races/create" className="mt-4">
-                  <Button>Create Race</Button>
+              <CardContent className="flex flex-col items-center py-8">
+                <p className="text-muted-foreground mb-4">Please create a race first</p>
+                <Link href="/admin/races/create">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    <Plus className="h-4 w-4 mr-2" /> Create Race
+                  </Button>
                 </Link>
               </CardContent>
             </div>
@@ -157,88 +242,91 @@ const Racers = () => {
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Racer Management</h1>
-
+    <div className="container mx-auto px-4 py-6">
       <div className="space-y-6">
         {raceClasses.map(raceClass => (
-          <Card key={raceClass}>
-            <CardHeader>
-              <h2 className="text-2xl font-semibold">{raceClass}</h2>
+          <Card key={raceClass} className="shadow-md">
+            <CardHeader className="pb-2">
+              <h2 className="text-2xl font-semibold flex items-center">
+                <Users className="h-5 w-5 mr-2 text-primary" /> {raceClass}
+              </h2>
+              <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {racersByClass[raceClass]?.length > 0 ? (
-                  racersByClass[raceClass].map(racer => (
-                    <div
-                      key={racer.id}
-                      className={`flex items-center justify-between p-2 rounded transition-colors
-                        ${
-                          editingRacer?.id === racer.id
-                            ? 'bg-primary/5 border border-primary/20'
-                            : 'bg-gray-50'
-                        }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="font-medium">#{racer.bibNumber}</span>
-                        <span>{racer.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setEditingRacer(racer)}
-                          className={`p-2 rounded-full transition-colors
-                            ${
-                              editingRacer?.id === racer.id
-                                ? 'bg-primary/10 hover:bg-primary/20'
-                                : 'hover:bg-gray-200'
-                            }`}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className={editingRacer?.id === racer.id ? 'text-primary' : ''}
+                  <div className="space-y-2">
+                    {racersByClass[raceClass].map(racer => (
+                      <div
+                        key={racer.id}
+                        className={`flex items-center justify-between p-3 rounded-md transition-colors
+                          ${
+                            editingRacer?.id === racer.id
+                              ? 'bg-primary/5 border border-primary/20'
+                              : 'bg-muted/30'
+                          }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="font-medium text-primary">#{racer.bibNumber}</span>
+                          <span>{racer.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => setEditingRacer(racer)}
+                            variant="ghost"
+                            size="sm"
+                            className={`p-2 rounded-full transition-colors
+                              ${
+                                editingRacer?.id === racer.id
+                                  ? 'bg-primary/10 hover:bg-primary/20 text-primary'
+                                  : 'hover:bg-muted'
+                              }`}
                           >
-                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => {
-                            dispatch(
-                              deletePersistedRacer({ id: racer.id, classId: racer.classId })
-                            );
-                            toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
-                          }}
-                          className="p-2 rounded-full transition-colors hover:bg-red-100"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-red-500"
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                          </svg>
-                        </button>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="p-2 rounded-full transition-colors hover:bg-red-100"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Are you sure you want to delete this racer?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the racer
+                                  from the system.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    dispatch(
+                                      deletePersistedRacer({ id: racer.id, classId: racer.classId })
+                                    );
+                                    toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
+                                  }}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-gray-500">No racers in this class yet.</p>
+                  <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
+                    <p>No racers in this class yet. Add your first racer below.</p>
+                  </div>
                 )}
 
                 <RacerForm

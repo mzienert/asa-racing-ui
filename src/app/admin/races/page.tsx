@@ -1,17 +1,15 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { 
-  Calendar as CalendarIcon, 
-  Trash2, 
-  Trophy, 
-  Users, 
-  Flag, 
-  Clock, 
-  CheckCircle2, 
-  Edit, 
+import {
+  Calendar as CalendarIcon,
+  Trash2,
+  Trophy,
+  Users,
+  Edit,
   Plus,
-  ListTodo
+  ListTodo,
+  AlertCircle,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/app/store/store';
@@ -78,6 +76,12 @@ export default function RacesPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showSetCurrentRaceDialog, setShowSetCurrentRaceDialog] = useState(false);
   const newRaceRef = useRef<{ id: string } | null>(null);
+  
+  // Form validation states
+  const [raceNameError, setRaceNameError] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [raceFormatError, setRaceFormatError] = useState<string | null>(null);
+  const [raceClassesError, setRaceClassesError] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(loadRacesFromStorage());
@@ -92,13 +96,99 @@ export default function RacesPage() {
     }
   }, [isEditing, activeRace]);
 
+  const validateRaceName = (name: string): boolean => {
+    if (!name.trim()) {
+      setRaceNameError('Race name is required');
+      return false;
+    }
+    if (name.length > 50) {
+      setRaceNameError('Race name must be less than 50 characters');
+      return false;
+    }
+    setRaceNameError(null);
+    return true;
+  };
+
+  const validateDate = (selectedDate?: Date): boolean => {
+    if (!selectedDate) {
+      setDateError('Race date is required');
+      return false;
+    }
+    setDateError(null);
+    return true;
+  };
+
+  const validateRaceFormat = (format: string): boolean => {
+    if (!format) {
+      setRaceFormatError('Race format is required');
+      return false;
+    }
+    setRaceFormatError(null);
+    return true;
+  };
+
+  const validateRaceClasses = (classes: string[]): boolean => {
+    if (classes.length === 0) {
+      setRaceClassesError('At least one race class must be selected');
+      return false;
+    }
+    setRaceClassesError(null);
+    return true;
+  };
+
+  const handleRaceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRaceName(value);
+    if (raceNameError) {
+      validateRaceName(value);
+    }
+  };
+
+  const handleRaceNameBlur = () => {
+    validateRaceName(raceName);
+  };
+
+  const handleDateChange = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    if (dateError) {
+      validateDate(selectedDate);
+    }
+  };
+
+  const handleRaceFormatChange = (value: string) => {
+    setRaceFormat(value);
+    if (raceFormatError) {
+      validateRaceFormat(value);
+    }
+  };
+
+  const handleRaceClassChange = (checked: boolean | string, className: string) => {
+    const newClasses = checked 
+      ? [...raceClasses, className] 
+      : raceClasses.filter(c => c !== className);
+    
+    setRaceClasses(newClasses);
+    if (raceClassesError) {
+      validateRaceClasses(newClasses);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date) return;
+    
+    // Validate all fields
+    const isNameValid = validateRaceName(raceName);
+    const isDateValid = validateDate(date);
+    const isFormatValid = validateRaceFormat(raceFormat);
+    const areClassesValid = validateRaceClasses(raceClasses);
+
+    if (!isNameValid || !isDateValid || !isFormatValid || !areClassesValid) {
+      return;
+    }
 
     const formData = {
       name: raceName,
-      date: date.toISOString(),
+      date: date!.toISOString(),
       raceFormat,
       raceClasses,
       completed: false,
@@ -195,7 +285,7 @@ export default function RacesPage() {
             <CardContent>
               {!activeRace && !isCreatingRace && (
                 <div className="flex justify-start">
-                  <Button 
+                  <Button
                     onClick={() => setIsCreatingRace(true)}
                     className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                     size="lg"
@@ -208,9 +298,10 @@ export default function RacesPage() {
                 <div className="w-full">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-4">
                     <div>
-                      <h1 className="text-xl font-semibold flex items-center mb-2">
+                      <h2 className="text-xl font-semibold flex items-center mb-2">
                         <Trophy className="h-5 w-5 mr-2 text-primary" /> Current Race
-                      </h1>
+                      </h2>
+                      <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
@@ -255,76 +346,39 @@ export default function RacesPage() {
                     </div>
                   </div>
                   {activeRace && (
-                    <div className="space-y-4 bg-muted/10 p-4 rounded-lg border border-muted/30">
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                          <Trophy className="h-4 w-4 mr-2" /> Race Name:
-                        </h3>
-                        <p className="text-lg font-medium">{activeRace.name}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                          <CalendarIcon className="h-4 w-4 mr-2" /> Date:
-                        </h3>
-                        <p className="text-lg">{activeRace.date ? format(new Date(activeRace.date), 'PPP') : 'Not set'}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                          <ListTodo className="h-4 w-4 mr-2" /> Race Format:
-                        </h3>
-                        <p className="text-lg capitalize">{activeRace.raceFormat?.replace('-', ' ') || 'Not set'}</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                          <Users className="h-4 w-4 mr-2" /> Race Classes:
-                        </h3>
-                        {activeRace.raceClasses && activeRace.raceClasses.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {activeRace.raceClasses.map(raceClass => (
-                              <span key={raceClass} className="inline-block bg-muted/40 px-3 py-1 rounded-md text-sm capitalize">
-                                {raceClass.replace('-', ' ')}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-lg">No classes selected</p>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
-                          <Flag className="h-4 w-4 mr-2" /> Status:
-                        </h3>
-                        <p className="text-lg">
-                          {activeRace.completed ? (
-                            <span className="text-green-600 font-medium flex items-center">
-                              <CheckCircle2 className="h-4 w-4 mr-2" /> Completed
-                            </span>
-                          ) : (
-                            <span className="text-blue-600 font-medium flex items-center">
-                              <Clock className="h-4 w-4 mr-2" /> In Progress
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
+                    <RaceDetails race={activeRace} />
                   )}
                 </div>
               )}
               {(isCreatingRace || isEditing) && (
                 <form onSubmit={handleSubmit} className="w-full space-y-4 max-w-2xl">
-                  <h3 className="text-lg font-medium mb-4">{isEditing ? 'Edit Race' : 'Create New Race'}</h3>
+                  <h3 className="text-lg font-medium mb-4">
+                    {isEditing ? 'Edit Race' : 'Create New Race'}
+                  </h3>
                   <div>
-                    <label htmlFor="raceName" className="block text-sm font-medium mb-1 flex items-center">
+                    <label
+                      htmlFor="raceName"
+                      className="block text-sm font-medium mb-1 flex items-center"
+                    >
                       <Trophy className="h-4 w-4 mr-2" /> Race Name
                     </label>
                     <input
                       type="text"
                       id="raceName"
                       value={raceName}
-                      onChange={e => setRaceName(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+                      onChange={handleRaceNameChange}
+                      onBlur={handleRaceNameBlur}
+                      className={`w-full px-3 py-2 border rounded-md bg-background text-foreground ${
+                        raceNameError ? 'border-red-500' : ''
+                      }`}
                       placeholder="Enter race name"
                     />
+                    {raceNameError && (
+                      <div className="flex items-center text-red-500 text-sm mt-1">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        {raceNameError}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1 flex items-center">
@@ -336,7 +390,8 @@ export default function RacesPage() {
                           variant={'outline'}
                           className={cn(
                             'w-full justify-start text-left font-normal',
-                            !date && 'text-muted-foreground'
+                            !date && 'text-muted-foreground',
+                            dateError && 'border-red-500'
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -344,40 +399,57 @@ export default function RacesPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                        <Calendar mode="single" selected={date} onSelect={handleDateChange} initialFocus />
                       </PopoverContent>
                     </Popover>
+                    {dateError && (
+                      <div className="flex items-center text-red-500 text-sm mt-1">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        {dateError}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1 flex items-center">
                       <ListTodo className="h-4 w-4 mr-2" /> Race Format
                     </label>
-                    <Select onValueChange={setRaceFormat} value={raceFormat}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a race format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single-elimination">Single Elimination</SelectItem>
-                        <SelectItem value="double-elimination">Double Elimination</SelectItem>
-                        <SelectItem value="head-to-head">Head to Head</SelectItem>
-                        <SelectItem value="time-trial">Time Trial</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <select
+                        value={raceFormat}
+                        onChange={(e) => handleRaceFormatChange(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-md bg-background text-foreground appearance-none ${
+                          raceFormatError ? 'border-red-500' : ''
+                        }`}
+                      >
+                        <option value="" disabled>Select a race format</option>
+                        <option value="single-elimination">Single Elimination</option>
+                        <option value="double-elimination">Double Elimination</option>
+                        <option value="head-to-head">Head to Head</option>
+                        <option value="time-trial">Time Trial</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    </div>
+                    {raceFormatError && (
+                      <div className="flex items-center text-red-500 text-sm mt-1">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        {raceFormatError}
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium flex items-center">
                       <Users className="h-4 w-4 mr-2" /> Race Classes
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${raceClassesError ? 'border border-red-500 p-2 rounded-md' : ''}`}>
                       <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="mens-open"
                           checked={raceClasses.includes('mens-open')}
-                          onCheckedChange={checked => {
-                            setRaceClasses(prev =>
-                              checked ? [...prev, 'mens-open'] : prev.filter(c => c !== 'mens-open')
-                            );
-                          }}
+                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'mens-open')}
                         />
                         <label
                           htmlFor="mens-open"
@@ -390,13 +462,7 @@ export default function RacesPage() {
                         <Checkbox
                           id="mens-amateur"
                           checked={raceClasses.includes('mens-amateur')}
-                          onCheckedChange={checked => {
-                            setRaceClasses(prev =>
-                              checked
-                                ? [...prev, 'mens-amateur']
-                                : prev.filter(c => c !== 'mens-amateur')
-                            );
-                          }}
+                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'mens-amateur')}
                         />
                         <label
                           htmlFor="mens-amateur"
@@ -409,11 +475,7 @@ export default function RacesPage() {
                         <Checkbox
                           id="womens"
                           checked={raceClasses.includes('womens')}
-                          onCheckedChange={checked => {
-                            setRaceClasses(prev =>
-                              checked ? [...prev, 'womens'] : prev.filter(c => c !== 'womens')
-                            );
-                          }}
+                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'womens')}
                         />
                         <label
                           htmlFor="womens"
@@ -423,6 +485,12 @@ export default function RacesPage() {
                         </label>
                       </div>
                     </div>
+                    {raceClassesError && (
+                      <div className="flex items-center text-red-500 text-sm mt-1">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        {raceClassesError}
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-start space-x-2 pt-4">
                     <Button
