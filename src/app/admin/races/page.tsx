@@ -1,7 +1,18 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, 
+  Trash2, 
+  Trophy, 
+  Users, 
+  Flag, 
+  Clock, 
+  CheckCircle2, 
+  Edit, 
+  Plus,
+  ListTodo
+} from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/app/store/store';
 
@@ -77,6 +88,7 @@ export default function RacesPage() {
       setRaceName(activeRace.name);
       setRaceFormat(activeRace.raceFormat || '');
       setDate(activeRace.date ? new Date(activeRace.date) : undefined);
+      setRaceClasses(activeRace.raceClasses || []);
     }
   }, [isEditing, activeRace]);
 
@@ -153,10 +165,7 @@ export default function RacesPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Race Management</h1>
-
-      {/* Set Current Race Dialog */}
+    <div className="container mx-auto px-4 py-6">
       <AlertDialog open={showSetCurrentRaceDialog} onOpenChange={setShowSetCurrentRaceDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -173,32 +182,43 @@ export default function RacesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="space-y-4">
-        <Card>
+      <div className="space-y-6">
+        <Card className="shadow-md">
           <div className="flex flex-col">
-            <CardHeader>
-              <p className="text-muted-foreground">Manage your racing events here.</p>
+            <CardHeader className="pb-2">
+              <h2 className="text-xl font-semibold mb-2">Race Management</h2>
+              <p className="text-muted-foreground text-sm">Manage your racing events here.</p>
             </CardHeader>
-            <CardContent className="flex flex-col items-center">
+            <div className="px-6 mb-6">
+              <hr className="border-t border-muted" />
+            </div>
+            <CardContent>
               {!activeRace && !isCreatingRace && (
-                <button
-                  onClick={() => setIsCreatingRace(true)}
-                  className="bg-primary text-primary-foreground px-6 py-2 rounded-md hover:bg-primary/90 transition-colors"
-                >
-                  Start New Race
-                </button>
+                <div className="flex justify-start">
+                  <Button 
+                    onClick={() => setIsCreatingRace(true)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    size="lg"
+                  >
+                    <Plus className="h-5 w-5 mr-2" /> Start New Race
+                  </Button>
+                </div>
               )}
               {activeRace && !isEditing && !isCreatingRace && (
-                <div className="w-full max-w-md">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Current Race</h2>
-                    <div className="flex space-x-2">
-                      <Button onClick={() => setIsEditing(true)} variant="outline">
-                        Edit Race
+                <div className="w-full">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-4">
+                    <div>
+                      <h1 className="text-xl font-semibold flex items-center mb-2">
+                        <Trophy className="h-5 w-5 mr-2 text-primary" /> Current Race
+                      </h1>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+                        <Edit className="h-4 w-4 mr-2" /> Edit Race
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive">
+                          <Button variant="destructive" size="sm">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </Button>
@@ -228,19 +248,74 @@ export default function RacesPage() {
                           setRaceClasses([]);
                         }}
                         variant="default"
+                        size="sm"
                       >
-                        Create New Race
+                        <Plus className="h-4 w-4 mr-2" /> Create New Race
                       </Button>
                     </div>
                   </div>
-                  {activeRace && <RaceDetails race={activeRace} />}
+                  {activeRace && (
+                    <div className="space-y-4 bg-muted/10 p-4 rounded-lg border border-muted/30">
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                          <Trophy className="h-4 w-4 mr-2" /> Race Name:
+                        </h3>
+                        <p className="text-lg font-medium">{activeRace.name}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                          <CalendarIcon className="h-4 w-4 mr-2" /> Date:
+                        </h3>
+                        <p className="text-lg">{activeRace.date ? format(new Date(activeRace.date), 'PPP') : 'Not set'}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                          <ListTodo className="h-4 w-4 mr-2" /> Race Format:
+                        </h3>
+                        <p className="text-lg capitalize">{activeRace.raceFormat?.replace('-', ' ') || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                          <Users className="h-4 w-4 mr-2" /> Race Classes:
+                        </h3>
+                        {activeRace.raceClasses && activeRace.raceClasses.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {activeRace.raceClasses.map(raceClass => (
+                              <span key={raceClass} className="inline-block bg-muted/40 px-3 py-1 rounded-md text-sm capitalize">
+                                {raceClass.replace('-', ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-lg">No classes selected</p>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1 flex items-center">
+                          <Flag className="h-4 w-4 mr-2" /> Status:
+                        </h3>
+                        <p className="text-lg">
+                          {activeRace.completed ? (
+                            <span className="text-green-600 font-medium flex items-center">
+                              <CheckCircle2 className="h-4 w-4 mr-2" /> Completed
+                            </span>
+                          ) : (
+                            <span className="text-blue-600 font-medium flex items-center">
+                              <Clock className="h-4 w-4 mr-2" /> In Progress
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {(isCreatingRace || isEditing) && (
-                <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+                <form onSubmit={handleSubmit} className="w-full space-y-4 max-w-2xl">
+                  <h3 className="text-lg font-medium mb-4">{isEditing ? 'Edit Race' : 'Create New Race'}</h3>
                   <div>
-                    <label htmlFor="raceName" className="block text-sm font-medium mb-1">
-                      Race Name
+                    <label htmlFor="raceName" className="block text-sm font-medium mb-1 flex items-center">
+                      <Trophy className="h-4 w-4 mr-2" /> Race Name
                     </label>
                     <input
                       type="text"
@@ -252,7 +327,9 @@ export default function RacesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Race Date</label>
+                    <label className="block text-sm font-medium mb-1 flex items-center">
+                      <CalendarIcon className="h-4 w-4 mr-2" /> Race Date
+                    </label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -272,7 +349,9 @@ export default function RacesPage() {
                     </Popover>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Race Format</label>
+                    <label className="block text-sm font-medium mb-1 flex items-center">
+                      <ListTodo className="h-4 w-4 mr-2" /> Race Format
+                    </label>
                     <Select onValueChange={setRaceFormat} value={raceFormat}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a race format" />
@@ -285,10 +364,12 @@ export default function RacesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-4">
-                    <label className="block text-sm font-medium">Race Classes</label>
-                    <div className="flex gap-6">
-                      <div className="flex items-center space-x-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium flex items-center">
+                      <Users className="h-4 w-4 mr-2" /> Race Classes
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="mens-open"
                           checked={raceClasses.includes('mens-open')}
@@ -305,7 +386,7 @@ export default function RacesPage() {
                           Men&apos;s Open
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="mens-amateur"
                           checked={raceClasses.includes('mens-amateur')}
@@ -324,7 +405,7 @@ export default function RacesPage() {
                           Men&apos;s Amateur
                         </label>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="womens"
                           checked={raceClasses.includes('womens')}
@@ -343,7 +424,7 @@ export default function RacesPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-end space-x-2">
+                  <div className="flex justify-start space-x-2 pt-4">
                     <Button
                       type="button"
                       variant="outline"
@@ -361,17 +442,20 @@ export default function RacesPage() {
             </CardContent>
           </div>
         </Card>
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">All Races</h2>
+        <Card className="shadow-md">
+          <CardHeader className="pb-2">
+            <h2 className="text-xl font-semibold flex items-center">
+              <ListTodo className="h-5 w-5 mr-2 text-primary" /> All Races
+            </h2>
+            <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
           </CardHeader>
           <CardContent>
             {allRaces.length === 0 ? (
-              <p className="text-center text-muted-foreground">
-                No races found. Create your first race above.
-              </p>
+              <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
+                <p>No races found. Create your first race above.</p>
+              </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {allRaces.map(race => (
                   <RaceListItem
                     key={race.id}
