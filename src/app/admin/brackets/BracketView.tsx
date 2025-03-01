@@ -12,7 +12,6 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDispatch } from 'react-redux';
-import { updatePersistedRacer } from '@/app/store/features/racersSlice';
 import type { AppDispatch } from '@/app/store/store';
 import { RaceMatch } from './RaceMatch';
 
@@ -179,12 +178,12 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
       }
 
       // Update positions for all affected groups
-      [activeGroup, overGroup].forEach((group: Racer[]) => {
+     /*  [activeGroup, overGroup].forEach((group: Racer[]) => {
         group.forEach((racer: Racer, idx: number) => {
           racer.position = idx + 1;
           dispatch(updatePersistedRacer(racer));
         });
-      });
+      }); */
 
       return newGroups;
     });
