@@ -1,14 +1,14 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit'
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 
 interface AuthState {
-  isAuthenticated: boolean
+  isAuthenticated: boolean;
   user: null | {
-    id: string
-    email: string
-  }
-  token: string | null
-  loading: boolean
-  error: string | null
+    id: string;
+    email: string;
+  };
+  token: string | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: AuthState = {
@@ -16,8 +16,8 @@ const initialState: AuthState = {
   user: null,
   token: null,
   loading: false,
-  error: null
-}
+  error: null,
+};
 
 // Function to decode JWT without external libraries
 const parseJwt = (token: string) => {
@@ -25,18 +25,19 @@ const parseJwt = (token: string) => {
     // Split the token and get the payload part
     const base64Url = token.split('.')[1];
     if (!base64Url) return null;
-    
+
     // Replace characters that are URL-specific
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    
+
     // Create the decoded payload
     const jsonPayload = decodeURIComponent(
-      window.atob(base64)
+      window
+        .atob(base64)
         .split('')
         .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
-    
+
     return JSON.parse(jsonPayload);
   } catch (e) {
     console.error('Error parsing JWT:', e);
@@ -49,7 +50,7 @@ const isTokenExpired = (token: string): boolean => {
   try {
     const decodedToken = parseJwt(token);
     if (!decodedToken || !decodedToken.exp) return true;
-    
+
     const currentTime = Math.floor(Date.now() / 1000);
     return decodedToken.exp < currentTime;
   } catch (e) {
@@ -65,34 +66,34 @@ export const loadAuthFromStorage = createAsyncThunk(
     if (typeof window === 'undefined' || !window.localStorage) {
       return rejectWithValue('Not in browser environment');
     }
-    
+
     try {
       // Try to get token from different possible keys
       const token = localStorage.getItem('accessToken');
-      
+
       if (!token) {
         return rejectWithValue('No token found');
       }
-      
+
       if (isTokenExpired(token)) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('jwt');
         return rejectWithValue('Token expired');
       }
-      
+
       // Extract user info from token
       const userData = parseJwt(token);
-      
+
       if (!userData) {
         return rejectWithValue('Invalid token');
       }
-      
+
       return {
         user: {
           id: userData.sub || userData.id || userData.userId,
-          email: userData.email || userData.username
+          email: userData.email || userData.username,
         },
-        token
+        token,
       };
     } catch (error) {
       console.error('Error in loadAuthFromStorage:', error);
@@ -106,41 +107,41 @@ export const authSlice = createSlice({
   initialState,
   reducers: {
     setUser: (state, action: PayloadAction<AuthState['user']>) => {
-      state.user = action.payload
-      state.isAuthenticated = !!action.payload
+      state.user = action.payload;
+      state.isAuthenticated = !!action.payload;
     },
     setToken: (state, action: PayloadAction<string>) => {
-      state.token = action.payload
-      
+      state.token = action.payload;
+
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('accessToken', action.payload)
+        localStorage.setItem('accessToken', action.payload);
       }
-      
+
       // Also update user info from token
-      const userData = parseJwt(action.payload)
+      const userData = parseJwt(action.payload);
       if (userData) {
         state.user = {
           id: userData.sub || userData.id || userData.userId,
-          email: userData.email || userData.username
-        }
-        state.isAuthenticated = true
+          email: userData.email || userData.username,
+        };
+        state.isAuthenticated = true;
       }
     },
-    logout: (state) => {
-      state.user = null
-      state.token = null
-      state.isAuthenticated = false
-      
+    logout: state => {
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('jwt')
-        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('jwt');
+        localStorage.removeItem('refreshToken');
       }
-    }
+    },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(loadAuthFromStorage.pending, (state) => {
+      .addCase(loadAuthFromStorage.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -158,8 +159,8 @@ export const authSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Authentication failed';
       });
-  }
-})
+  },
+});
 
-export const { setUser, setToken, logout } = authSlice.actions
-export default authSlice.reducer
+export const { setUser, setToken, logout } = authSlice.actions;
+export default authSlice.reducer;

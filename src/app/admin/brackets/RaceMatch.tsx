@@ -9,19 +9,16 @@ interface RaceMatchProps {
   racers: Racer[];
 }
 
-export const RaceMatch: React.FC<RaceMatchProps> = ({ 
-  raceNumber, 
+export const RaceMatch: React.FC<RaceMatchProps> = ({
+  raceNumber,
   //position = 'left',
-  racers = []
+  racers = [],
 }) => {
   return (
     <div className="relative border rounded-md p-2 w-[220px] bg-white shadow-sm">
       <div className="text-sm font-medium mb-2">Race {raceNumber}</div>
-      <SortableContext
-        items={racers.map(racer => racer.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {racers.map((racer) => (
+      <SortableContext items={racers.map(racer => racer.id)} strategy={verticalListSortingStrategy}>
+        {racers.map(racer => (
           <RacerItem key={racer.id} racer={racer} />
         ))}
       </SortableContext>

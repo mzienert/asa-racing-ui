@@ -1,10 +1,14 @@
 'use client';
-import { persistRacer, updatePersistedRacer, loadRacersFromStorage, deletePersistedRacer } from '@/app/store/features/racersSlice';
-import { 
-  selectRaceClasses, 
-  selectRacersByClass, 
-  selectActiveRace,
-  selectRaces
+import {
+  persistRacer,
+  updatePersistedRacer,
+  loadRacersFromStorage,
+  deletePersistedRacer,
+} from '@/app/store/features/racersSlice';
+import {
+  selectRaceClasses,
+  selectRacersByClass,
+  selectRaces,
 } from '@/app/store/selectors/raceSelectors';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -38,7 +42,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editRacer) {
       dispatch(updatePersistedRacer({ ...editRacer, name, bibNumber, classId }));
       toast.success(`Updated ${name} with bib #${bibNumber}`);
@@ -68,7 +72,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
         <input
           type="text"
           value={bibNumber}
-          onChange={(e) => setBibNumber(e.target.value)}
+          onChange={e => setBibNumber(e.target.value)}
           placeholder="Bib"
           maxLength={3}
           className="flex h-10 w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -76,11 +80,11 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={e => setName(e.target.value)}
           placeholder="Racer Name"
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
-        <button 
+        <button
           type="submit"
           className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
@@ -104,16 +108,11 @@ const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
   const hasRace = useSelector(selectHasActiveRace);
-  const activeRace = useSelector(selectActiveRace);
   const races = useSelector(selectRaces);
-  const hasRaces = races.length > 0;
-  
+
   // Get race classes
   const raceClasses = useSelector(selectRaceClasses);
-  
-  // Get all racers from state for debugging
-  const allRacers = useSelector((state: RootState) => state.racers?.racers || []);
-  
+
   // Get racers by class
   const racersByClass = useSelector((state: RootState) => {
     const result: Record<string, Racer[]> = {};
@@ -127,7 +126,7 @@ const Racers = () => {
     // Load both races and racers
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
-    
+
     // If we have races but no active race, set the first race as active
     if (races.length > 0 && !hasRace) {
       dispatch(setCurrentRace(races[0].id));
@@ -160,9 +159,9 @@ const Racers = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Racer Management</h1>
-      
+
       <div className="space-y-6">
-        {raceClasses.map((raceClass) => (
+        {raceClasses.map(raceClass => (
           <Card key={raceClass}>
             <CardHeader>
               <h2 className="text-2xl font-semibold">{raceClass}</h2>
@@ -170,13 +169,14 @@ const Racers = () => {
             <CardContent>
               <div className="space-y-4">
                 {racersByClass[raceClass]?.length > 0 ? (
-                  racersByClass[raceClass].map((racer) => (
-                    <div 
-                      key={racer.id} 
+                  racersByClass[raceClass].map(racer => (
+                    <div
+                      key={racer.id}
                       className={`flex items-center justify-between p-2 rounded transition-colors
-                        ${editingRacer?.id === racer.id 
-                          ? 'bg-primary/5 border border-primary/20' 
-                          : 'bg-gray-50'
+                        ${
+                          editingRacer?.id === racer.id
+                            ? 'bg-primary/5 border border-primary/20'
+                            : 'bg-gray-50'
                         }`}
                     >
                       <div className="flex items-center gap-4">
@@ -187,9 +187,10 @@ const Racers = () => {
                         <button
                           onClick={() => setEditingRacer(racer)}
                           className={`p-2 rounded-full transition-colors
-                            ${editingRacer?.id === racer.id 
-                              ? 'bg-primary/10 hover:bg-primary/20' 
-                              : 'hover:bg-gray-200'
+                            ${
+                              editingRacer?.id === racer.id
+                                ? 'bg-primary/10 hover:bg-primary/20'
+                                : 'hover:bg-gray-200'
                             }`}
                         >
                           <svg
@@ -209,7 +210,9 @@ const Racers = () => {
                         </button>
                         <button
                           onClick={() => {
-                            dispatch(deletePersistedRacer({ id: racer.id, classId: racer.classId }));
+                            dispatch(
+                              deletePersistedRacer({ id: racer.id, classId: racer.classId })
+                            );
                             toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
                           }}
                           className="p-2 rounded-full transition-colors hover:bg-red-100"
@@ -226,7 +229,9 @@ const Racers = () => {
                             strokeLinejoin="round"
                             className="text-red-500"
                           >
-                            <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                           </svg>
                         </button>
                       </div>
@@ -235,7 +240,7 @@ const Racers = () => {
                 ) : (
                   <p className="text-gray-500">No racers in this class yet.</p>
                 )}
-                
+
                 <RacerForm
                   classId={raceClass}
                   editRacer={editingRacer?.classId === raceClass ? editingRacer : null}

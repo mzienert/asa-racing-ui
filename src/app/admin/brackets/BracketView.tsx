@@ -9,11 +9,7 @@ import {
   DragOverlay,
   DragStartEvent,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDispatch } from 'react-redux';
 import { updatePersistedRacer } from '@/app/store/features/racersSlice';
@@ -42,13 +38,9 @@ interface RacerItemProps {
 
 // Draggable racer component
 function RacerItem({ racer }: RacerItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: racer.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: racer.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -76,16 +68,13 @@ const RoundGroup: React.FC<RoundGroupProps> = ({ groups, roundIndex }) => {
       <div className="text-sm font-semibold mb-2">Round {roundIndex + 1}</div>
       <div className="flex gap-4">
         {groups.map((group, groupIndex) => (
-          <div 
-            key={groupIndex}
-            className="p-4 border rounded bg-white"
-          >
+          <div key={groupIndex} className="p-4 border rounded bg-white">
             <div className="text-sm font-semibold mb-2">Race {roundIndex * 2 + groupIndex + 1}</div>
             <SortableContext
               items={group.map(racer => racer.id)}
               strategy={verticalListSortingStrategy}
             >
-              {group.map((racer) => (
+              {group.map(racer => (
                 <RacerItem key={racer.id} racer={racer} />
               ))}
             </SortableContext>
@@ -99,7 +88,7 @@ const RoundGroup: React.FC<RoundGroupProps> = ({ groups, roundIndex }) => {
 const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [activeRacer, setActiveRacer] = useState<Racer | null>(null);
-  
+
   // Initialize first round groups (4 racers per group)
   const [firstRoundGroups, setFirstRoundGroups] = useState(() => {
     const groups: Racer[][] = [];
@@ -124,7 +113,7 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
   const [secondChanceGroups, setSecondChanceGroups] = useState<Racer[][]>(
     Array(numSecondChanceRaces).fill([])
   );
-  /* eslint-disable @typescript-eslint/no-unused-vars */ 
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   const [secondChanceFinal, setSecondChanceFinal] = useState<Racer[]>([]);
 
   const sensors = useSensors(
@@ -137,9 +126,7 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const activeGroup = firstRoundGroups.find(group => 
-      group.some(racer => racer.id === active.id)
-    );
+    const activeGroup = firstRoundGroups.find(group => group.some(racer => racer.id === active.id));
     const draggedRacer = activeGroup?.find(racer => racer.id === active.id);
     if (draggedRacer) {
       setActiveRacer(draggedRacer);
@@ -154,10 +141,10 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
     const activeId = active.id;
     const overId = over.id;
 
-    const activeGroupIndex = firstRoundGroups.findIndex(group => 
+    const activeGroupIndex = firstRoundGroups.findIndex(group =>
       group.some(racer => racer.id === activeId)
     );
-    const overGroupIndex = firstRoundGroups.findIndex(group => 
+    const overGroupIndex = firstRoundGroups.findIndex(group =>
       group.some(racer => racer.id === overId)
     );
 
@@ -172,14 +159,14 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
         // Same group logic remains unchanged
         const oldIndex = activeGroup.findIndex((racer: Racer) => racer.id === activeId);
         const newIndex = activeGroup.findIndex((racer: Racer) => racer.id === overId);
-        
+
         const [movedRacer] = activeGroup.splice(oldIndex, 1);
         activeGroup.splice(newIndex, 0, movedRacer);
       } else {
         // Remove from active group
         const movedRacerIndex = activeGroup.findIndex((racer: Racer) => racer.id === activeId);
         const [movedRacer] = activeGroup.splice(movedRacerIndex, 1);
-        
+
         // Add to over group
         const overIndex = overGroup.findIndex((racer: Racer) => racer.id === overId);
         overGroup.splice(overIndex, 0, movedRacer);
@@ -198,17 +185,13 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
           dispatch(updatePersistedRacer(racer));
         });
       });
-      
+
       return newGroups;
     });
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-8">
         {/* Second Chance Column */}
         <div className="w-[250px]">
@@ -241,11 +224,7 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
           <h3 className="text-lg font-semibold mb-4">First Round</h3>
           <div className="space-y-4">
             {firstRoundGroups.map((group, index) => (
-              <RaceMatch
-                key={`first-round-${index}`}
-                raceNumber={index + 1}
-                racers={group}
-              />
+              <RaceMatch key={`first-round-${index}`} raceNumber={index + 1} racers={group} />
             ))}
           </div>
         </div>
@@ -289,4 +268,4 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
   );
 };
 
-export default BracketView; 
+export default BracketView;

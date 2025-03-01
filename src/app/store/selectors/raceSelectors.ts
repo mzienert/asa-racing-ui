@@ -1,18 +1,18 @@
 import { RootState } from '../store';
-import { Race } from '../features/racesSlice';
 import { Racer } from '../features/racersSlice';
 
-export const selectRaces = (state: RootState) => {
-  return state.races?.items || [];
-};
+export const selectRaces = (state: RootState) => state.races.items;
+
+export const selectActiveRaceId = (state: RootState) => state.races.currentRaceId;
 
 export const selectActiveRace = (state: RootState) => {
-  return state.races?.currentRace || null;
+  const currentRaceId = state.races.currentRaceId;
+  if (!currentRaceId) return null;
+
+  return state.races.items.find(race => race.id === currentRaceId) || null;
 };
 
-export const selectHasActiveRace = (state: RootState) => {
-  return !!state.races?.currentRace;
-};
+export const selectHasActiveRace = (state: RootState) => !!state.races.currentRaceId;
 
 export const selectFirstRace = (state: RootState) => {
   const races = selectRaces(state);
@@ -25,41 +25,41 @@ export const selectRaceClasses = (state: RootState) => {
   if (activeRace?.raceClasses && activeRace.raceClasses.length > 0) {
     return activeRace.raceClasses;
   }
-  
+
   // If no active race or no classes in active race, try the first race
   const firstRace = selectFirstRace(state);
   if (firstRace?.raceClasses && firstRace.raceClasses.length > 0) {
     return firstRace.raceClasses;
   }
-  
+
   return [];
 };
 
 export const selectRacersByClass = (state: RootState, classId: string) => {
-  if (!state.racers || !state.racers.racers || !Array.isArray(state.racers.racers)) {
+  if (!state.racers || !state.racers.items || !Array.isArray(state.racers.items)) {
     return [];
   }
-  
-  const racersInClass = state.racers.racers.filter((racer: Racer) => racer.classId === classId);
+
+  const racersInClass = state.racers.items.filter((racer: Racer) => racer.classId === classId);
   return racersInClass;
 };
 
 export const selectRacersByAllClasses = (state: RootState) => {
   const raceClasses = selectRaceClasses(state);
   const result: Record<string, Racer[]> = {};
-  
+
   raceClasses.forEach(classId => {
     result[classId] = selectRacersByClass(state, classId);
   });
-  
+
   return result;
 };
 
 export const selectRacerById = (state: RootState, id: string) => {
-  if (!state.racers || !state.racers.racers || !Array.isArray(state.racers.racers)) {
+  if (!state.racers || !state.racers.items || !Array.isArray(state.racers.items)) {
     return undefined;
   }
-  return state.racers.racers.find((racer: Racer) => racer.id === id);
+  return state.racers.items.find((racer: Racer) => racer.id === id);
 };
 
 export const selectRaceById = (state: RootState, id: string) => {

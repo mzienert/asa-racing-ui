@@ -23,4 +23,4 @@ export const initializeStore = async (dispatch: AppDispatch) => {
   // Load races and racers data
   dispatch(loadRacesFromStorage());
   dispatch(loadRacersFromStorage());
-}; 
+};

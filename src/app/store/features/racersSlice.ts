@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 export interface Racer {
   id: string;
@@ -16,7 +16,7 @@ interface RacersState {
 const initialState: RacersState = {
   items: [],
   loading: false,
-  error: null
+  error: null,
 };
 
 // Helper function to get racers from localStorage
@@ -24,7 +24,7 @@ const getRacersFromStorage = (): Racer[] => {
   try {
     const storedData = localStorage.getItem('racers');
     if (!storedData) return [];
-    
+
     const parsedData = JSON.parse(storedData);
     return Array.isArray(parsedData) ? parsedData : [];
   } catch (e) {
@@ -33,12 +33,9 @@ const getRacersFromStorage = (): Racer[] => {
   }
 };
 
-export const loadRacersFromStorage = createAsyncThunk(
-  'racers/loadFromStorage',
-  async () => {
-    return getRacersFromStorage();
-  }
-);
+export const loadRacersFromStorage = createAsyncThunk('racers/loadFromStorage', async () => {
+  return getRacersFromStorage();
+});
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
@@ -46,25 +43,25 @@ export const persistRacer = createAsyncThunk(
     // Check if a racer with this bib number already exists
     const state = getState() as { racers: RacersState };
     const existingRacer = state.racers.items.find(r => r.bibNumber === racer.bibNumber);
-    
+
     if (existingRacer) {
       return rejectWithValue({ existingRacer });
     }
-    
+
     const newRacer = {
       ...racer,
-      id: crypto.randomUUID()
+      id: crypto.randomUUID(),
     };
-    
+
     // Get existing racers
     const racers = getRacersFromStorage();
-    
+
     // Add the new racer
     racers.push(newRacer);
-    
+
     // Store in localStorage
     localStorage.setItem('racers', JSON.stringify(racers));
-    
+
     return newRacer;
   }
 );
@@ -73,25 +70,25 @@ export const updatePersistedRacer = createAsyncThunk(
   'racers/updatePersistedRacer',
   async (racer: Racer) => {
     const racers = getRacersFromStorage();
-    
+
     const racerIndex = racers.findIndex(r => r.id === racer.id);
     if (racerIndex !== -1) {
       racers[racerIndex] = racer;
       localStorage.setItem('racers', JSON.stringify(racers));
     }
-    
+
     return racer;
   }
 );
 
 export const deletePersistedRacer = createAsyncThunk(
   'racers/deletePersistedRacer',
-  async ({ id, classId }: { id: string, classId: string }) => {
+  async ({ id, classId }: { id: string; classId: string }) => {
     const racers = getRacersFromStorage();
-    
+
     const filteredRacers = racers.filter(r => r.id !== id);
     localStorage.setItem('racers', JSON.stringify(filteredRacers));
-    
+
     return { id, classId };
   }
 );
@@ -100,9 +97,9 @@ const racersSlice = createSlice({
   name: 'racers',
   initialState,
   reducers: {},
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(loadRacersFromStorage.pending, (state) => {
+      .addCase(loadRacersFromStorage.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -126,7 +123,7 @@ const racersSlice = createSlice({
       .addCase(deletePersistedRacer.fulfilled, (state, action) => {
         state.items = state.items.filter(racer => racer.id !== action.payload.id);
       });
-  }
+  },
 });
 
-export default racersSlice.reducer; 
+export default racersSlice.reducer;

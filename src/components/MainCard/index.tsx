@@ -1,12 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MainCardProps {
   children: React.ReactNode;
@@ -20,9 +15,7 @@ const MainCard: React.FC<MainCardProps> = ({ children, title }) => {
         <CardHeader>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
-        <CardContent>
-          {children}
-        </CardContent>
+        <CardContent>{children}</CardContent>
       </Card>
     </div>
   );

@@ -8,13 +8,9 @@ interface RacerItemProps {
 }
 
 export const RacerItem: React.FC<RacerItemProps> = ({ racer }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-  } = useSortable({ id: racer.id });
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: racer.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),

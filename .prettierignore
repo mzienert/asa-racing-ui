@@ -1,0 +1,19 @@
+# Build directories
+/out
+/out/**
+cdk.out
+cdk.out/**
+/.next
+/.next/**
+
+# Dependencies
+/node_modules
+/node_modules/**
+
+# Other common directories to ignore
+/dist
+/build
+/coverage
+/.vercel
+/.vscode
+/public

@@ -1,4 +1,4 @@
-import Link from "next/link"
+import Link from 'next/link';
 
 export default function Page() {
   return (
@@ -8,11 +8,9 @@ export default function Page() {
         <h1 className="text-3xl font-bold mb-4">Welcome to Admin Dashboard</h1>
         <div className="border rounded-lg p-8 bg-muted/50">
           <div className="flex justify-between items-center">
-            <p className="text-muted-foreground">
-              Manage your races and racers from here
-            </p>
-            <Link 
-              href="/admin/races" 
+            <p className="text-muted-foreground">Manage your races and racers from here</p>
+            <Link
+              href="/admin/races"
               className="bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90"
             >
               Create a Race
@@ -31,5 +29,5 @@ export default function Page() {
         </div>
       </div>
     </div>
-  )
+  );
 }

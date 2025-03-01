@@ -1,4 +1,4 @@
-import { Trophy, Users, ListTodo, ListOrdered } from "lucide-react"
+import { Trophy, Users, ListTodo, ListOrdered } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -9,34 +9,34 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@/components/ui/sidebar"
-import Link from "next/link"
+} from '@/components/ui/sidebar';
+import Link from 'next/link';
 
 const navigationItems = [
   {
-    title: "Race Management",
+    title: 'Race Management',
     icon: Trophy,
-    href: "/admin/races"
+    href: '/admin/races',
   },
   {
-    title: "Racers",
+    title: 'Racers',
     icon: Users,
-    href: "/admin/racers"
+    href: '/admin/racers',
   },
   {
-    title: "Brackets",
+    title: 'Brackets',
     icon: ListOrdered,
-    href: "/admin/brackets"
+    href: '/admin/brackets',
   },
   {
-    title: "Results",
+    title: 'Results',
     icon: ListTodo,
-    href: "/admin/results"
-  }
-]
+    href: '/admin/results',
+  },
+];
 
 interface AdminSidebarProps {
-  variant?: "sidebar" | "floating" | "inset"
+  variant?: 'sidebar' | 'floating' | 'inset';
 }
 
 export function AdminSidebar({ variant }: AdminSidebarProps) {
@@ -54,7 +54,7 @@ export function AdminSidebar({ variant }: AdminSidebarProps) {
           <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {navigationItems.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link href={item.href}>
@@ -69,5 +69,5 @@ export function AdminSidebar({ variant }: AdminSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
-} 
+  );
+}
