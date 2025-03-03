@@ -9,6 +9,7 @@ import {
   selectRaceClasses,
   selectRacersByClass,
   selectRaces,
+  selectActiveRace,
 } from '@/app/store/selectors/raceSelectors';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -20,8 +21,8 @@ import type { AppDispatch } from '@/app/store/store';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { loadRacesFromStorage, setCurrentRace } from '@/app/store/features/racesSlice';
-import { Users, Edit, Trash2, Plus, AlertCircle } from 'lucide-react';
+import { loadRacesFromStorage, setCurrentRace, updatePersistedRace, RaceStatus } from '@/app/store/features/racesSlice';
+import { Users, Edit, Trash2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +34,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import RaceStatusBadge from '@/components/RaceStatusBadge';
+import { PageHeader } from '@/components/page-header';
 
 interface RacerFormProps {
   classId: string;
   editRacer?: Racer | null;
   onCancelEdit?: () => void;
+  onComplete?: () => void;
+  showComplete?: boolean;
 }
 
-const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
+const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete }: RacerFormProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [name, setName] = useState(editRacer?.name || '');
   const [bibNumber, setBibNumber] = useState(editRacer?.bibNumber || '');
@@ -100,7 +105,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
 
     if (editRacer) {
       dispatch(updatePersistedRacer({ ...editRacer, name, bibNumber, classId }));
-      toast.success(`Updated ${name} with bib #${bibNumber}`);
+      toast.success(`Updated ${name} with Racer #${bibNumber}`);
       onCancelEdit?.();
     } else {
       const result = await dispatch(persistRacer({ name, bibNumber, classId }));
@@ -108,7 +113,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
         const payload = result.payload as { existingRacer: Racer };
         toast.error(`Bib #${bibNumber} is already assigned to ${payload.existingRacer.name}`);
       } else {
-        toast.success(`Added ${name} with bib #${bibNumber}`);
+        toast.success(`Added ${name} with Racer #${bibNumber}`);
       }
     }
     setName('');
@@ -126,7 +131,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="w-full sm:w-1/4">
           <label htmlFor="bibNumber" className="block text-sm font-medium mb-1">
-            Bib Number
+            Racer Number
           </label>
           <input
             id="bibNumber"
@@ -172,12 +177,35 @@ const RacerForm = ({ classId, editRacer, onCancelEdit }: RacerFormProps) => {
       </div>
       <div className="flex justify-start space-x-2 pt-2">
         <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Plus className="h-4 w-4 mr-2" />
           {editRacer ? 'Update Racer' : 'Add Racer'}
         </Button>
         {editRacer && (
           <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
+        )}
+        {showComplete && !editRacer && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="bg-green-600 text-white hover:bg-green-700">
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Complete Racer Configuration?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will finalize racers for this class. You won't be able to add or modify racers after this step.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onComplete} className="bg-green-600 hover:bg-green-700">Complete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </form>
@@ -189,6 +217,7 @@ const Racers = () => {
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
+  const activeRace = useSelector(selectActiveRace);
 
   // Get race classes
   const raceClasses = useSelector(selectRaceClasses);
@@ -212,6 +241,16 @@ const Racers = () => {
       dispatch(setCurrentRace(races[0].id));
     }
   }, [dispatch, races.length, hasRace]);
+
+  const handleCompleteClass = () => {
+    if (activeRace) {
+      dispatch(updatePersistedRace({ 
+        ...activeRace, 
+        status: RaceStatus.Seeding 
+      }));
+      toast.success('Race status updated to Seeding');
+    }
+  };
 
   if (!hasRace) {
     return (
@@ -244,12 +283,20 @@ const Racers = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="space-y-6">
+        <PageHeader
+          title="Racer Management"
+          description="Manage your racers here."
+          icon={Users}
+        />
         {raceClasses.map(raceClass => (
           <Card key={raceClass} className="shadow-md">
             <CardHeader className="pb-2">
-              <h2 className="text-2xl font-semibold flex items-center">
-                <Users className="h-5 w-5 mr-2 text-primary" /> {raceClass}
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold flex items-center">
+                  <Users className="h-5 w-5 mr-2 text-primary" /> {raceClass.replace('-', ' ')}
+                </h2>
+                {activeRace && <RaceStatusBadge status={activeRace.status} size="sm" />}
+              </div>
               <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
             </CardHeader>
             <CardContent>
@@ -270,56 +317,58 @@ const Racers = () => {
                           <span className="font-medium text-primary">#{racer.bibNumber}</span>
                           <span>{racer.name}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => setEditingRacer(racer)}
-                            variant="ghost"
-                            size="sm"
-                            className={`p-2 rounded-full transition-colors
-                              ${
-                                editingRacer?.id === racer.id
-                                  ? 'bg-primary/10 hover:bg-primary/20 text-primary'
-                                  : 'hover:bg-muted'
-                              }`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="p-2 rounded-full transition-colors hover:bg-red-100"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Are you sure you want to delete this racer?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the racer
-                                  from the system.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => {
-                                    dispatch(
-                                      deletePersistedRacer({ id: racer.id, classId: racer.classId })
-                                    );
-                                    toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
-                                  }}
+                        {activeRace?.status === RaceStatus.Configuring && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => setEditingRacer(racer)}
+                              variant="ghost"
+                              size="sm"
+                              className={`p-2 rounded-full transition-colors
+                                ${
+                                  editingRacer?.id === racer.id
+                                    ? 'bg-primary/10 hover:bg-primary/20 text-primary'
+                                    : 'hover:bg-muted'
+                                }`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="p-2 rounded-full transition-colors hover:bg-red-100"
                                 >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Are you sure you want to delete this racer?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the racer
+                                    from the system.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      dispatch(
+                                        deletePersistedRacer({ id: racer.id, classId: racer.classId })
+                                      );
+                                      toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
+                                    }}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -329,11 +378,15 @@ const Racers = () => {
                   </div>
                 )}
 
-                <RacerForm
-                  classId={raceClass}
-                  editRacer={editingRacer?.classId === raceClass ? editingRacer : null}
-                  onCancelEdit={() => setEditingRacer(null)}
-                />
+                {activeRace?.status === RaceStatus.Configuring && (
+                  <RacerForm
+                    classId={raceClass}
+                    editRacer={editingRacer?.classId === raceClass ? editingRacer : null}
+                    onCancelEdit={() => setEditingRacer(null)}
+                    onComplete={handleCompleteClass}
+                    showComplete={true}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>

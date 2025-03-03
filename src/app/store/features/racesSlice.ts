@@ -1,12 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
+export enum RaceStatus {
+  Configuring = 'CONFIGURING',
+  Seeding = 'SEEDING',
+  Racing = 'RACING',
+  Completed = 'COMPLETED'
+}
+
 export interface Race {
   id: string;
   name: string;
   date: string;
   raceFormat?: string;
   raceClasses: string[];
-  completed?: boolean;
+  status: RaceStatus;
 }
 
 // Change the state structure to be flat - races is now the array directly

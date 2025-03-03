@@ -36,6 +36,7 @@ import {
   loadRacesFromStorage,
   deletePersistedRace,
   setCurrentRace,
+  RaceStatus,
 } from '@/app/store/features/racesSlice';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -52,7 +53,7 @@ export interface RaceDetailsProps {
     date?: string;
     raceFormat?: string;
     raceClasses?: string[];
-    completed?: boolean;
+    status: RaceStatus;
   };
 }
 
@@ -184,7 +185,7 @@ export default function RacesPage() {
       date: date!.toISOString(),
       raceFormat,
       raceClasses,
-      completed: false,
+      status: RaceStatus.Configuring,
     };
 
     if (isEditing) {

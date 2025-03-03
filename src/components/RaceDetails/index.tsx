@@ -1,8 +1,44 @@
 import { RaceDetailsProps } from '@/app/admin/races/page';
 import { format } from 'date-fns';
-import { Trophy, CalendarIcon, ListTodo, Users, Flag, CheckCircle2, Clock } from 'lucide-react';
+import { Trophy, CalendarIcon, ListTodo, Users, Flag, CheckCircle2, Settings, UserPlus, Timer } from 'lucide-react';
+import { RaceStatus } from '@/app/store/features/racesSlice';
 
 const RaceDetails = ({ race }: RaceDetailsProps) => {
+  const getStatusIcon = (status: RaceStatus) => {
+    switch (status) {
+      case RaceStatus.Configuring:
+        return <Settings className="h-4 w-4 mr-2" />;
+      case RaceStatus.Seeding:
+        return <UserPlus className="h-4 w-4 mr-2" />;
+      case RaceStatus.Racing:
+        return <Timer className="h-4 w-4 mr-2" />;
+      case RaceStatus.Completed:
+        return <CheckCircle2 className="h-4 w-4 mr-2" />;
+      default:
+        return <Settings className="h-4 w-4 mr-2" />;
+    }
+  };
+
+  const getStatusColor = (status: RaceStatus) => {
+    switch (status) {
+      case RaceStatus.Configuring:
+        return 'text-yellow-600';
+      case RaceStatus.Seeding:
+        return 'text-blue-600';
+      case RaceStatus.Racing:
+        return 'text-green-600';
+      case RaceStatus.Completed:
+        return 'text-purple-600';
+      default:
+        return 'text-yellow-600';
+    }
+  };
+
+  const formatStatus = (status: RaceStatus): string => {
+    // Convert enum value like 'CONFIGURING' to 'Configuring'
+    return status.toLowerCase().replace(/(?:^|\s)\S/g, (char) => char.toUpperCase());
+  };
+
   return (
     <div className="space-y-4 bg-muted/90 p-4 rounded-lg border border-muted/30">
       <div>
@@ -51,15 +87,9 @@ const RaceDetails = ({ race }: RaceDetailsProps) => {
           <Flag className="h-4 w-4 mr-2" /> Status:
         </h3>
         <p className="text-lg">
-          {race.completed ? (
-            <span className="text-green-600 font-medium flex items-center">
-              <CheckCircle2 className="h-4 w-4 mr-2" /> Completed
-            </span>
-          ) : (
-            <span className="text-blue-600 font-medium flex items-center">
-              <Clock className="h-4 w-4 mr-2" /> In Progress
-            </span>
-          )}
+          <span className={`font-medium flex items-center ${getStatusColor(race.status || RaceStatus.Configuring)}`}>
+            {getStatusIcon(race.status || RaceStatus.Configuring)} {formatStatus(race.status || RaceStatus.Configuring)}
+          </span>
         </p>
       </div>
     </div>

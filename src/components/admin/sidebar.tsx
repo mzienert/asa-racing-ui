@@ -1,4 +1,4 @@
-import { Trophy, Users, ListTodo, ListOrdered } from 'lucide-react';
+import { Trophy, Users, ListTodo, ListOrdered, ClipboardList} from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,11 @@ const navigationItems = [
     title: 'Racers',
     icon: Users,
     href: '/admin/racers',
+  },
+  {
+    title: 'Seeding',
+    icon: ClipboardList,
+    href: '/admin/seeding',
   },
   {
     title: 'Brackets',
