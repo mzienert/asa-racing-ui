@@ -19,8 +19,8 @@ interface CurrentRaceProps {
   race: {
     id: string;
     name: string;
-    date?: string;
-    raceClasses?: RaceClass[];
+    date: string;
+    raceClasses: RaceClass[];
     status: RaceStatus;
   };
   onEdit: () => void;
@@ -51,12 +51,10 @@ const CurrentRace = ({ race, onEdit, onDelete, onCreateNew }: CurrentRaceProps) 
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Are you sure you want to delete this race?
-                </AlertDialogTitle>
+                <AlertDialogTitle>Are you sure you want to delete this race?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the race
-                  and remove all associated data.
+                  This action cannot be undone. This will permanently delete the race and remove all
+                  associated data.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -65,11 +63,7 @@ const CurrentRace = ({ race, onEdit, onDelete, onCreateNew }: CurrentRaceProps) 
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button
-            onClick={onCreateNew}
-            variant="default"
-            size="sm"
-          >
+          <Button onClick={onCreateNew} variant="default" size="sm">
             <Plus className="h-4 w-4 mr-2" /> Create New Race
           </Button>
         </div>
@@ -79,4 +73,4 @@ const CurrentRace = ({ race, onEdit, onDelete, onCreateNew }: CurrentRaceProps) 
   );
 };
 
-export default CurrentRace; 
+export default CurrentRace;
