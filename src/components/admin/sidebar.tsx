@@ -1,4 +1,4 @@
-import { Trophy, Users, ListTodo, ListOrdered, ClipboardList } from 'lucide-react';
+import { Trophy, Users, ListTodo, ClipboardList } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,

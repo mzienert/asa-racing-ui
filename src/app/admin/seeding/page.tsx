@@ -2,14 +2,12 @@
 import { updatePersistedRacer, loadRacersFromStorage } from '@/app/store/features/racersSlice';
 import {
   selectRaceClasses,
-  selectRacersByClass,
   selectRaces,
   selectActiveRace,
   selectRacersByAllClasses,
 } from '@/app/store/selectors/raceSelectors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/app/store/store';
 import { selectHasActiveRace } from '@/app/store/selectors/raceSelectors';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import type { Racer } from '@/app/store/features/racersSlice';

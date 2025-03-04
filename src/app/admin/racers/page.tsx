@@ -7,7 +7,6 @@ import {
 } from '@/app/store/features/racersSlice';
 import {
   selectRaceClasses,
-  selectRacersByClass,
   selectRaces,
   selectActiveRace,
   selectRacersByActiveRaceClass,
