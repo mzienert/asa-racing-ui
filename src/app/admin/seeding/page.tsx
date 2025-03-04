@@ -30,7 +30,6 @@ import CurrentRaceBadge from '@/components/CurrentRaceBadge';
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
   const [seedTimes, setSeedTimes] = useState<Record<string, string>>({});
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
@@ -215,12 +214,7 @@ const Racers = () => {
                                   {racersByClass[raceClass.raceClass].map(racer => (
                                     <div
                                       key={racer.id}
-                                      className={`flex items-center justify-between p-3 rounded-md transition-colors
-                                      ${
-                                        editingRacer?.id === racer.id
-                                          ? 'bg-primary/5 border border-primary/20'
-                                          : 'bg-muted/30'
-                                      }`}
+                                      className="flex items-center justify-between p-3 rounded-md transition-colors bg-muted/30"
                                     >
                                       <div className="flex items-center gap-4">
                                         <span className="font-medium text-primary">

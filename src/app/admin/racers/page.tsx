@@ -26,7 +26,6 @@ import {
   setCurrentRace,
   updatePersistedRace,
   RaceStatus,
-  RaceClass,
   RaceClassStatus,
 } from '@/app/store/features/racesSlice';
 import { Users, Edit, Trash2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
@@ -42,7 +41,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import RaceStatusBadge, { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
-import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CurrentRaceBadge from '@/components/CurrentRaceBadge';
 
@@ -70,6 +68,13 @@ const RacerForm = ({
     selectRaceClasses(state).find(rc => rc.raceClass === classId)
   );
 
+  useEffect(() => {
+    if (editRacer) {
+      setName(editRacer.name);
+      setBibNumber(editRacer.bibNumber);
+    }
+  }, [editRacer]);
+
   // If the race class is not in Configuring status, don't render the form
   if (raceClass?.status !== RaceClassStatus.CREATED) {
     return (
@@ -82,13 +87,6 @@ const RacerForm = ({
       </div>
     );
   }
-
-  useEffect(() => {
-    if (editRacer) {
-      setName(editRacer.name);
-      setBibNumber(editRacer.bibNumber);
-    }
-  }, [editRacer]);
 
   const validateName = (value: string): boolean => {
     if (!value.trim()) {
@@ -228,7 +226,7 @@ const RacerForm = ({
               <AlertDialogHeader>
                 <AlertDialogTitle>Complete Racer Configuration?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will finalize racers for this class. You won't be able to add or modify
+                  This will finalize racers for this class. You won&apos;t be able to add or modify
                   racers after this step.
                 </AlertDialogDescription>
               </AlertDialogHeader>

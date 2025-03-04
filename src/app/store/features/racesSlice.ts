@@ -103,8 +103,20 @@ export const deletePersistedRace = createAsyncThunk(
     const races = getRacesFromStorage();
 
     // Get and filter racers
-    const racers = JSON.parse(localStorage.getItem('racers') || '[]');
-    const remainingRacers = racers.filter((racer: any) => racer.raceId !== id);
+    interface StoredRacer {
+      id: string;
+      raceId: string;
+      name: string;
+      bibNumber: string;
+      classId: string;
+      seedData?: {
+        time?: string;
+        startingPosition?: number | null;
+      };
+    }
+
+    const racers = JSON.parse(localStorage.getItem('racers') || '[]') as StoredRacer[];
+    const remainingRacers = racers.filter((racer) => racer.raceId !== id);
 
     // Update racers in localStorage
     localStorage.setItem('racers', JSON.stringify(remainingRacers));
