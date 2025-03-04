@@ -2,6 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Trophy, CalendarIcon, Users, AlertCircle } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/app/store/store';
+import { persistRace, updatePersistedRace } from '@/app/store/features/racesSlice';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,17 +16,12 @@ import ConfirmationDialog from '@/components/ConfirmationDialog';
 interface RaceDetailsFormProps {
   isEditing?: boolean;
   initialData?: {
+    id?: string;
     name?: string;
     date?: Date;
     raceClasses?: RaceClass[];
   };
   hasActiveRace?: boolean;
-  onSubmit: (formData: {
-    name: string;
-    date: string;
-    raceClasses: RaceClass[];
-    status: RaceStatus;
-  }) => void;
   onSetCurrentRace: (id: string) => void;
   onCancel: () => void;
 }
@@ -32,22 +30,25 @@ const RaceDetailsForm = ({
   isEditing = false,
   initialData,
   hasActiveRace = false,
-  onSubmit,
   onSetCurrentRace,
   onCancel,
 }: RaceDetailsFormProps) => {
+  const dispatch = useDispatch<AppDispatch>();
   const [raceName, setRaceName] = useState(initialData?.name || '');
   const [date, setDate] = useState<Date | undefined>(initialData?.date);
   const [raceClasses, setRaceClasses] = useState<RaceClass[]>(initialData?.raceClasses || []);
 
-  // Form validation states
   const [raceNameError, setRaceNameError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const [raceClassesError, setRaceClassesError] = useState<string | null>(null);
 
-  // Add state for dialog
   const [showSetCurrentRaceDialog, setShowSetCurrentRaceDialog] = useState(false);
-  const newRaceRef = useRef<{ id: string } | null>(null);
+  const newRaceRef = useRef<{
+    name: string;
+    date: string;
+    raceClasses: RaceClass[];
+    status: RaceStatus;
+  } | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -118,10 +119,29 @@ const RaceDetailsForm = ({
     }
   };
 
+  const handleSetCurrentRace = async () => {
+    if (newRaceRef.current) {
+      const result = await dispatch(persistRace(newRaceRef.current));
+      const newRace = result.payload as { id: string };
+      if (newRace?.id) {
+        onSetCurrentRace(newRace.id);
+      }
+    }
+    setShowSetCurrentRaceDialog(false);
+    newRaceRef.current = null;
+  };
+
+  const handleKeepCurrentRace = async () => {
+    if (newRaceRef.current) {
+      await dispatch(persistRace(newRaceRef.current));
+    }
+    setShowSetCurrentRaceDialog(false);
+    newRaceRef.current = null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all fields
     const isNameValid = validateRaceName(raceName);
     const isDateValid = validateDate(date);
     const areClassesValid = validateRaceClasses(raceClasses);
@@ -137,30 +157,20 @@ const RaceDetailsForm = ({
       status: RaceStatus.Configuring,
     };
 
-    if (!isEditing && hasActiveRace) {
-      // Store the form data temporarily
+    if (isEditing && initialData?.id) {
+      await dispatch(updatePersistedRace({ ...formData, id: initialData.id }));
+      onCancel();
+    } else if (!isEditing && hasActiveRace) {
       newRaceRef.current = formData;
       setShowSetCurrentRaceDialog(true);
     } else {
-      onSubmit(formData);
+      const result = await dispatch(persistRace(formData));
+      const newRace = result.payload as { id: string };
+      if (newRace?.id) {
+        onSetCurrentRace(newRace.id);
+      }
+      onCancel();
     }
-  };
-
-  const handleSetCurrentRace = () => {
-    if (newRaceRef.current) {
-      onSubmit(newRaceRef.current);
-      // onSetCurrentRace will be called by the parent after race creation
-    }
-    setShowSetCurrentRaceDialog(false);
-    newRaceRef.current = null;
-  };
-
-  const handleKeepCurrentRace = () => {
-    if (newRaceRef.current) {
-      onSubmit(newRaceRef.current);
-    }
-    setShowSetCurrentRaceDialog(false);
-    newRaceRef.current = null;
   };
 
   return (

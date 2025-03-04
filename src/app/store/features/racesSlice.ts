@@ -33,6 +33,20 @@ interface RacesState {
   error: string | null;
 }
 
+interface SeedData {
+  time?: string;
+  startingPosition?: number | null;
+}
+
+interface StoredRacer {
+  id: string;
+  raceId: string;
+  name: string;
+  bibNumber: string;
+  classId: string;
+  seedData?: SeedData;
+}
+
 const initialState: RacesState = {
   items: [],
   currentRaceId: null,
@@ -40,7 +54,6 @@ const initialState: RacesState = {
   error: null,
 };
 
-// Simple function to get races from localStorage as an array
 const getRacesFromStorage = (): Race[] => {
   try {
     const storedData = localStorage.getItem('races');
@@ -63,20 +76,15 @@ export const loadRacesFromStorage = createAsyncThunk('races/loadFromStorage', as
 });
 
 export const persistRace = createAsyncThunk('races/persistRace', async (race: Omit<Race, 'id'>) => {
-  // Create the new race with an ID
   const newRace = {
     ...race,
     id: crypto.randomUUID(),
   };
 
-  // Get existing races as a simple array
-  const races = getRacesFromStorage();
+  const existingRaces = getRacesFromStorage();
+  const updatedRaces = [...existingRaces, newRace];
 
-  // Add the new race
-  races.push(newRace);
-
-  // Store as a simple array
-  localStorage.setItem('races', JSON.stringify(races));
+  localStorage.setItem('races', JSON.stringify(updatedRaces));
 
   return newRace;
 });
@@ -99,29 +107,13 @@ export const updatePersistedRace = createAsyncThunk(
 export const deletePersistedRace = createAsyncThunk(
   'races/deletePersistedRace',
   async (id: string) => {
-    // Get the race to be deleted
     const races = getRacesFromStorage();
 
-    // Get and filter racers
-    interface StoredRacer {
-      id: string;
-      raceId: string;
-      name: string;
-      bibNumber: string;
-      classId: string;
-      seedData?: {
-        time?: string;
-        startingPosition?: number | null;
-      };
-    }
-
     const racers = JSON.parse(localStorage.getItem('racers') || '[]') as StoredRacer[];
-    const remainingRacers = racers.filter((racer) => racer.raceId !== id);
+    const remainingRacers = racers.filter(racer => racer.raceId !== id);
 
-    // Update racers in localStorage
     localStorage.setItem('racers', JSON.stringify(remainingRacers));
 
-    // Filter out the deleted race
     const filteredRaces = races.filter((r: Race) => r.id !== id);
     localStorage.setItem('races', JSON.stringify(filteredRaces));
 
@@ -152,7 +144,7 @@ const racesSlice = createSlice({
         state.error = null;
       })
       .addCase(loadRacesFromStorage.fulfilled, (state, action) => {
-        state.items = action.payload.races; // Changed from 'races' to 'items'
+        state.items = action.payload.races;
         state.currentRaceId = action.payload.currentRaceId;
         state.loading = false;
       })
@@ -161,16 +153,16 @@ const racesSlice = createSlice({
         state.error = action.error.message || 'Failed to load races';
       })
       .addCase(persistRace.fulfilled, (state, action) => {
-        state.items.push(action.payload); // Changed from 'races' to 'items'
+        state.items.push(action.payload);
       })
       .addCase(updatePersistedRace.fulfilled, (state, action) => {
-        const index = state.items.findIndex(race => race.id === action.payload.id); // Changed from 'races' to 'items'
+        const index = state.items.findIndex(race => race.id === action.payload.id);
         if (index !== -1) {
-          state.items[index] = action.payload; // Changed from 'races' to 'items'
+          state.items[index] = action.payload;
         }
       })
       .addCase(deletePersistedRace.fulfilled, (state, action) => {
-        state.items = state.items.filter(race => race.id !== action.payload); // Changed from 'races' to 'items'
+        state.items = state.items.filter(race => race.id !== action.payload);
         if (state.currentRaceId === action.payload) {
           state.currentRaceId = null;
         }

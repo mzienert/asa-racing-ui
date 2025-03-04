@@ -4,8 +4,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/app/store/store';
 
 import {
-  persistRace,
-  updatePersistedRace,
   loadRacesFromStorage,
   deletePersistedRace,
   setCurrentRace,
@@ -14,7 +12,6 @@ import {
 } from '@/app/store/features/racesSlice';
 import {
   selectActiveRace,
-  selectActiveRaceId,
   selectRaces,
 } from '@/app/store/selectors/raceSelectors';
 import RaceManagementContainer from '@/components/RaceManagementContainer';
@@ -34,30 +31,11 @@ export interface RaceDetailsProps {
 export default function RacesPage() {
   const dispatch = useDispatch<AppDispatch>();
   const activeRace = useSelector(selectActiveRace);
-  const activeRaceId = useSelector(selectActiveRaceId);
   const allRaces = useSelector(selectRaces);
 
   useEffect(() => {
     dispatch(loadRacesFromStorage());
   }, [dispatch]);
-
-  const handleSubmit = (formData: {
-    name: string;
-    date: string;
-    raceClasses: RaceClass[];
-    status: RaceStatus;
-  }) => {
-    if (activeRace) {
-      dispatch(updatePersistedRace({ ...formData, id: activeRace.id }));
-    } else {
-      dispatch(persistRace(formData)).then(action => {
-        const newRace = action.payload as { id: string };
-        if (newRace && newRace.id && !activeRaceId) {
-          dispatch(setCurrentRace(newRace.id));
-        }
-      });
-    }
-  };
 
   const handleDeleteRace = () => {
     if (activeRace) {
@@ -82,9 +60,8 @@ export default function RacesPage() {
             <CardContent>
               <RaceManagementContainer
                 activeRace={activeRace}
-                hasActiveRace={!!activeRaceId}
+                hasActiveRace={!!activeRace}
                 onDeleteRace={handleDeleteRace}
-                onSubmitForm={handleSubmit}
                 onSetCurrentRace={(id) => dispatch(setCurrentRace(id))}
               />
             </CardContent>
@@ -93,7 +70,7 @@ export default function RacesPage() {
 
         <RaceListContainer
           races={allRaces}
-          activeRaceId={activeRaceId}
+          activeRaceId={activeRace?.id || null}
           onSetCurrent={(id) => dispatch(setCurrentRace(id))}
           onDelete={(id) => dispatch(deletePersistedRace(id))}
         />

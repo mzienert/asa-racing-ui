@@ -4,20 +4,12 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CurrentRace from '@/components/CurrentRace';
 import RaceDetailsForm from '@/components/RaceDetailsForm';
-import { RaceStatus, RaceClass, Race } from '@/app/store/features/racesSlice';
-
-interface RaceFormData {
-  name: string;
-  date: string;
-  raceClasses: RaceClass[];
-  status: RaceStatus;
-}
+import { Race } from '@/app/store/features/racesSlice';
 
 interface RaceManagementContainerProps {
   activeRace: Race | null;
   hasActiveRace: boolean;
   onDeleteRace: () => void;
-  onSubmitForm: (formData: RaceFormData) => void;
   onSetCurrentRace: (id: string) => void;
 }
 
@@ -25,7 +17,6 @@ const RaceManagementContainer = ({
   activeRace,
   hasActiveRace,
   onDeleteRace,
-  onSubmitForm,
   onSetCurrentRace,
 }: RaceManagementContainerProps) => {
   const [isCreatingRace, setIsCreatingRace] = useState(false);
@@ -70,10 +61,6 @@ const RaceManagementContainer = ({
         raceClasses: activeRace.raceClasses,
       } : undefined}
       hasActiveRace={hasActiveRace}
-      onSubmit={(formData) => {
-        onSubmitForm(formData);
-        handleCancelForm();
-      }}
       onSetCurrentRace={onSetCurrentRace}
       onCancel={handleCancelForm}
     />
