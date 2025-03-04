@@ -5,8 +5,9 @@ import {
   selectRacersByClass,
   selectRaces,
   selectActiveRace,
+  selectRacersByAllClasses,
 } from '@/app/store/selectors/raceSelectors';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/app/store/store';
 import { selectHasActiveRace } from '@/app/store/selectors/raceSelectors';
@@ -34,18 +35,10 @@ const Racers = () => {
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-
-  // Get race classes
   const raceClasses = useSelector(selectRaceClasses);
-
-  // Get racers by class
-  const racersByClass = useSelector((state: RootState) => {
-    const result: Record<string, Racer[]> = {};
-    raceClasses.forEach(raceClass => {
-      result[raceClass.raceClass] = selectRacersByClass(state, raceClass.raceClass);
-    });
-    return result;
-  });
+  const racersByClassResult = useSelector(selectRacersByAllClasses);
+  
+  const racersByClass = useMemo(() => racersByClassResult, [racersByClassResult]);
 
   const handleSaveTime = (racerId: string, raceClass: string) => {
     const racer = racersByClass[raceClass]?.find(r => r.id === racerId);

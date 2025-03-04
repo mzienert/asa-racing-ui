@@ -1,5 +1,6 @@
 import { RootState } from '../store';
 import { Racer } from '../features/racersSlice';
+import { createSelector } from '@reduxjs/toolkit';
 
 export const selectRaces = (state: RootState) => state.races.items;
 
@@ -44,16 +45,30 @@ export const selectRacersByClass = (state: RootState, classId: string) => {
   return racersInClass;
 };
 
-export const selectRacersByAllClasses = (state: RootState) => {
-  const raceClasses = selectRaceClasses(state);
-  const result: Record<string, Racer[]> = {};
+const selectRacersItems = (state: RootState) => state.racers?.items || [];
 
-  raceClasses.forEach(classId => {
-    result[classId] = selectRacersByClass(state, classId);
-  });
+export const selectRacersByAllClasses = createSelector(
+  [selectRaceClasses, selectRacersItems, selectActiveRaceId],
+  (raceClasses, racers, activeRaceId): Record<string, Racer[]> => {
+    if (!raceClasses.length || !activeRaceId) {
+      return {};
+    }
 
-  return result;
-};
+    // Initialize result object with empty arrays for each class
+    const result: Record<string, Racer[]> = Object.fromEntries(
+      raceClasses.map(rc => [rc.raceClass, []])
+    );
+
+    // Single pass through racers
+    racers.forEach(racer => {
+      if (racer.raceId === activeRaceId && result.hasOwnProperty(racer.classId)) {
+        result[racer.classId].push(racer);
+      }
+    });
+
+    return result;
+  }
+);
 
 export const selectRacerById = (state: RootState, id: string) => {
   if (!state.racers || !state.racers.items || !Array.isArray(state.racers.items)) {
@@ -66,3 +81,18 @@ export const selectRaceById = (state: RootState, id: string) => {
   const races = selectRaces(state);
   return races.find(race => race.id === id);
 };
+
+export const selectRacersByActiveRaceClass = createSelector(
+  [selectRaceClasses, selectRacersItems, selectActiveRace],
+  (raceClasses, racers, activeRace) => {
+    const result: Record<string, Racer[]> = {};
+    if (!activeRace) return result;
+
+    raceClasses.forEach(raceClass => {
+      result[raceClass.raceClass] = racers.filter(
+        racer => racer.classId === raceClass.raceClass && racer.raceId === activeRace.id
+      );
+    });
+    return result;
+  }
+);

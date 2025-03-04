@@ -10,6 +10,7 @@ import {
   selectRacersByClass,
   selectRaces,
   selectActiveRace,
+  selectRacersByActiveRaceClass,
 } from '@/app/store/selectors/raceSelectors';
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -266,18 +267,8 @@ const Racers = () => {
   // Get race classes
   const raceClasses = useSelector(selectRaceClasses);
 
-  // Get racers by class
-  const racersByClass = useSelector((state: RootState) => {
-    const result: Record<string, Racer[]> = {};
-    if (!activeRace) return result;
-
-    raceClasses.forEach(raceClass => {
-      result[raceClass.raceClass] = selectRacersByClass(state, raceClass.raceClass).filter(
-        racer => racer.raceId === activeRace.id
-      );
-    });
-    return result;
-  });
+  // Get racers by class using memoized selector
+  const racersByClass = useSelector(selectRacersByActiveRaceClass);
 
   useEffect(() => {
     // Load both races and racers

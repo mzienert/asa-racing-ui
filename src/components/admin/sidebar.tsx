@@ -28,11 +28,11 @@ const navigationItems = [
     icon: ClipboardList,
     href: '/admin/seeding',
   },
-  {
+/*   {
     title: 'Brackets',
     icon: ListOrdered,
     href: '/admin/brackets',
-  },
+  }, */
   {
     title: 'Results',
     icon: ListTodo,
