@@ -183,7 +183,7 @@ const Racers = () => {
                               <div>
                                 <h2 className="text-2xl font-semibold flex items-center">
                                   <Users className="h-5 w-5 mr-2 text-primary" />
-                                  {raceClass.raceClass.replace('-', ' ')}
+                                  {raceClass.raceClass?.replace('-', ' ') || raceClass.raceClass}
                                 </h2>
                                 <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
                               </div>
