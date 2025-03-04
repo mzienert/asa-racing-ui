@@ -37,6 +37,8 @@ import {
   deletePersistedRace,
   setCurrentRace,
   RaceStatus,
+  RaceClassStatus,
+  RaceClass,
 } from '@/app/store/features/racesSlice';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -51,8 +53,7 @@ export interface RaceDetailsProps {
   race: {
     name: string;
     date?: string;
-    raceFormat?: string;
-    raceClasses?: string[];
+    raceClasses?: RaceClass[];
     status: RaceStatus;
   };
 }
@@ -65,16 +66,14 @@ export default function RacesPage() {
   const [isCreatingRace, setIsCreatingRace] = useState(false);
   const [date, setDate] = useState<Date>();
   const [raceName, setRaceName] = useState('');
-  const [raceFormat, setRaceFormat] = useState('');
-  const [raceClasses, setRaceClasses] = useState<string[]>([]);
+  const [raceClasses, setRaceClasses] = useState<RaceClass[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [showSetCurrentRaceDialog, setShowSetCurrentRaceDialog] = useState(false);
   const newRaceRef = useRef<{ id: string } | null>(null);
-  
+
   // Form validation states
   const [raceNameError, setRaceNameError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
-  const [raceFormatError, setRaceFormatError] = useState<string | null>(null);
   const [raceClassesError, setRaceClassesError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,7 +83,6 @@ export default function RacesPage() {
   useEffect(() => {
     if (isEditing && activeRace) {
       setRaceName(activeRace.name);
-      setRaceFormat(activeRace.raceFormat || '');
       setDate(activeRace.date ? new Date(activeRace.date) : undefined);
       setRaceClasses(activeRace.raceClasses || []);
     }
@@ -112,16 +110,7 @@ export default function RacesPage() {
     return true;
   };
 
-  const validateRaceFormat = (format: string): boolean => {
-    if (!format) {
-      setRaceFormatError('Race format is required');
-      return false;
-    }
-    setRaceFormatError(null);
-    return true;
-  };
-
-  const validateRaceClasses = (classes: string[]): boolean => {
+  const validateRaceClasses = (classes: RaceClass[]): boolean => {
     if (classes.length === 0) {
       setRaceClassesError('At least one race class must be selected');
       return false;
@@ -149,18 +138,11 @@ export default function RacesPage() {
     }
   };
 
-  const handleRaceFormatChange = (value: string) => {
-    setRaceFormat(value);
-    if (raceFormatError) {
-      validateRaceFormat(value);
-    }
-  };
-
   const handleRaceClassChange = (checked: boolean | string, className: string) => {
-    const newClasses = checked 
-      ? [...raceClasses, className] 
-      : raceClasses.filter(c => c !== className);
-    
+    const newClasses = checked
+      ? [...raceClasses, { raceClass: className, status: RaceClassStatus.CREATED }]
+      : raceClasses.filter(c => c.raceClass !== className);
+
     setRaceClasses(newClasses);
     if (raceClassesError) {
       validateRaceClasses(newClasses);
@@ -169,21 +151,19 @@ export default function RacesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate all fields
     const isNameValid = validateRaceName(raceName);
     const isDateValid = validateDate(date);
-    const isFormatValid = validateRaceFormat(raceFormat);
     const areClassesValid = validateRaceClasses(raceClasses);
 
-    if (!isNameValid || !isDateValid || !isFormatValid || !areClassesValid) {
+    if (!isNameValid || !isDateValid || !areClassesValid) {
       return;
     }
 
     const formData = {
       name: raceName,
       date: date!.toISOString(),
-      raceFormat,
       raceClasses,
       status: RaceStatus.Configuring,
     };
@@ -195,7 +175,6 @@ export default function RacesPage() {
       setIsCreatingRace(false);
       setIsEditing(false);
       setRaceName('');
-      setRaceFormat('');
       setDate(undefined);
       setRaceClasses([]);
     } else {
@@ -203,11 +182,9 @@ export default function RacesPage() {
         const newRace = action.payload as { id: string };
         if (newRace && newRace.id) {
           if (activeRaceId) {
-            // If there's already an active race, show the dialog
             newRaceRef.current = newRace;
             setShowSetCurrentRaceDialog(true);
           } else {
-            // If there's no active race, set this as the current race
             dispatch(setCurrentRace(newRace.id));
           }
         }
@@ -216,7 +193,6 @@ export default function RacesPage() {
         setIsCreatingRace(false);
         setIsEditing(false);
         setRaceName('');
-        setRaceFormat('');
         setDate(undefined);
         setRaceClasses([]);
       });
@@ -242,7 +218,6 @@ export default function RacesPage() {
       setIsCreatingRace(false);
       setIsEditing(false);
       setRaceName('');
-      setRaceFormat('');
       setDate(undefined);
       setRaceClasses([]);
     }
@@ -328,7 +303,6 @@ export default function RacesPage() {
                         onClick={() => {
                           setIsCreatingRace(true);
                           setRaceName('');
-                          setRaceFormat('');
                           setDate(undefined);
                           setRaceClasses([]);
                         }}
@@ -339,9 +313,7 @@ export default function RacesPage() {
                       </Button>
                     </div>
                   </div>
-                  {activeRace && (
-                    <RaceDetails race={activeRace} />
-                  )}
+                  {activeRace && <RaceDetails race={activeRace} />}
                 </div>
               )}
               {(isCreatingRace || isEditing) && (
@@ -393,7 +365,12 @@ export default function RacesPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={date} onSelect={handleDateChange} initialFocus />
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={handleDateChange}
+                          initialFocus
+                        />
                       </PopoverContent>
                     </Popover>
                     {dateError && (
@@ -403,47 +380,18 @@ export default function RacesPage() {
                       </div>
                     )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1 flex items-center">
-                      <ListTodo className="h-4 w-4 mr-2" /> Race Format
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={raceFormat}
-                        onChange={(e) => handleRaceFormatChange(e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-md bg-background text-foreground appearance-none ${
-                          raceFormatError ? 'border-red-500' : ''
-                        }`}
-                      >
-                        <option value="" disabled>Select a race format</option>
-                        <option value="single-elimination">Single Elimination</option>
-                        <option value="double-elimination">Double Elimination</option>
-                        <option value="head-to-head">Head to Head</option>
-                        <option value="time-trial">Time Trial</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    </div>
-                    {raceFormatError && (
-                      <div className="flex items-center text-red-500 text-sm mt-1">
-                        <AlertCircle className="h-4 w-4 mr-2" />
-                        {raceFormatError}
-                      </div>
-                    )}
-                  </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium flex items-center">
                       <Users className="h-4 w-4 mr-2" /> Race Classes
                     </label>
-                    <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${raceClassesError ? 'border border-red-500 p-2 rounded-md' : ''}`}>
+                    <div
+                      className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${raceClassesError ? 'border border-red-500 p-2 rounded-md' : ''}`}
+                    >
                       <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="mens-open"
-                          checked={raceClasses.includes('mens-open')}
-                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'mens-open')}
+                          checked={raceClasses.some(rc => rc.raceClass === 'mens-open')}
+                          onCheckedChange={checked => handleRaceClassChange(!!checked, 'mens-open')}
                         />
                         <label
                           htmlFor="mens-open"
@@ -455,8 +403,10 @@ export default function RacesPage() {
                       <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="mens-amateur"
-                          checked={raceClasses.includes('mens-amateur')}
-                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'mens-amateur')}
+                          checked={raceClasses.some(rc => rc.raceClass === 'mens-amateur')}
+                          onCheckedChange={checked =>
+                            handleRaceClassChange(!!checked, 'mens-amateur')
+                          }
                         />
                         <label
                           htmlFor="mens-amateur"
@@ -468,8 +418,8 @@ export default function RacesPage() {
                       <div className="flex items-center space-x-2 bg-muted/30 p-3 rounded-md">
                         <Checkbox
                           id="womens"
-                          checked={raceClasses.includes('womens')}
-                          onCheckedChange={(checked) => handleRaceClassChange(!!checked, 'womens')}
+                          checked={raceClasses.some(rc => rc.raceClass === 'womens')}
+                          onCheckedChange={checked => handleRaceClassChange(!!checked, 'womens')}
                         />
                         <label
                           htmlFor="womens"

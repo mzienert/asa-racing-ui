@@ -2,31 +2,40 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 export enum RaceStatus {
   Configuring = 'CONFIGURING',
+  In_Progress = 'IN_PROGRESS',
+  Completed = 'COMPLETED',
+}
+
+export enum RaceClassStatus {
+  CREATED = 'CREATED',
   Seeding = 'SEEDING',
   Racing = 'RACING',
-  Completed = 'COMPLETED'
+  Completed = 'COMPLETED',
+}
+
+export interface RaceClass {
+  raceClass: string;
+  status: RaceClassStatus;
 }
 
 export interface Race {
   id: string;
   name: string;
   date: string;
-  raceFormat?: string;
-  raceClasses: string[];
+  raceClasses: RaceClass[];
   status: RaceStatus;
 }
 
-// Change the state structure to be flat - races is now the array directly
 interface RacesState {
-  items: Race[]; // Changed from 'races' to 'items' to avoid confusion
-  currentRaceId: string | null; // Changed from currentRace object to currentRaceId string
+  items: Race[];
+  currentRaceId: string | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: RacesState = {
-  items: [], // Changed from 'races' to 'items'
-  currentRaceId: null, // Changed from currentRace object to currentRaceId string
+  items: [],
+  currentRaceId: null,
   loading: false,
   error: null,
 };
@@ -90,8 +99,17 @@ export const updatePersistedRace = createAsyncThunk(
 export const deletePersistedRace = createAsyncThunk(
   'races/deletePersistedRace',
   async (id: string) => {
+    // Get the race to be deleted
     const races = getRacesFromStorage();
 
+    // Get and filter racers
+    const racers = JSON.parse(localStorage.getItem('racers') || '[]');
+    const remainingRacers = racers.filter((racer: any) => racer.raceId !== id);
+
+    // Update racers in localStorage
+    localStorage.setItem('racers', JSON.stringify(remainingRacers));
+
+    // Filter out the deleted race
     const filteredRaces = races.filter((r: Race) => r.id !== id);
     localStorage.setItem('races', JSON.stringify(filteredRaces));
 

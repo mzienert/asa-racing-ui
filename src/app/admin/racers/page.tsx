@@ -21,7 +21,7 @@ import type { AppDispatch } from '@/app/store/store';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { loadRacesFromStorage, setCurrentRace, updatePersistedRace, RaceStatus } from '@/app/store/features/racesSlice';
+import { loadRacesFromStorage, setCurrentRace, updatePersistedRace, RaceStatus, RaceClass, RaceClassStatus } from '@/app/store/features/racesSlice';
 import { Users, Edit, Trash2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
@@ -34,8 +34,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import RaceStatusBadge from '@/components/RaceStatusBadge';
+import RaceStatusBadge, { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
 import { PageHeader } from '@/components/page-header';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import CurrentRaceBadge from '@/components/CurrentRaceBadge';
 
 interface RacerFormProps {
   classId: string;
@@ -51,6 +58,19 @@ const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete 
   const [bibNumber, setBibNumber] = useState(editRacer?.bibNumber || '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [bibError, setBibError] = useState<string | null>(null);
+  const raceClass = useSelector((state: RootState) => 
+    selectRaceClasses(state).find(rc => rc.raceClass === classId)
+  );
+
+  // If the race class is not in Configuring status, don't render the form
+  if (raceClass?.status !== RaceClassStatus.CREATED) {
+    return (
+      <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+        <AlertCircle className="h-5 w-5" />
+        <p>Racer management is locked. This race class is now in {raceClass?.status.toLowerCase()} status.</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (editRacer) {
@@ -139,7 +159,7 @@ const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete 
             value={bibNumber}
             onChange={handleBibChange}
             onBlur={() => validateBib(bibNumber)}
-            placeholder="Bib #"
+            placeholder="Racer #"
             maxLength={3}
             className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
               bibError ? 'border-red-500' : 'border-input'
@@ -218,6 +238,10 @@ const Racers = () => {
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
+  const activeRaces = races.filter(race => 
+    race.status === RaceStatus.Configuring || 
+    race.status === RaceStatus.In_Progress
+  );
 
   // Get race classes
   const raceClasses = useSelector(selectRaceClasses);
@@ -225,8 +249,11 @@ const Racers = () => {
   // Get racers by class
   const racersByClass = useSelector((state: RootState) => {
     const result: Record<string, Racer[]> = {};
+    if (!activeRace) return result;
+    
     raceClasses.forEach(raceClass => {
-      result[raceClass] = selectRacersByClass(state, raceClass);
+      result[raceClass.raceClass] = selectRacersByClass(state, raceClass.raceClass)
+        .filter(racer => racer.raceId === activeRace.id);
     });
     return result;
   });
@@ -242,13 +269,19 @@ const Racers = () => {
     }
   }, [dispatch, races.length, hasRace]);
 
-  const handleCompleteClass = () => {
+  const handleCompleteClass = (classId: string) => {
     if (activeRace) {
+      const updatedRaceClasses = activeRace.raceClasses.map(rc => 
+        rc.raceClass === classId 
+          ? { ...rc, status: RaceClassStatus.Seeding }
+          : rc
+      );
+      
       dispatch(updatePersistedRace({ 
         ...activeRace, 
-        status: RaceStatus.Seeding 
+        raceClasses: updatedRaceClasses
       }));
-      toast.success('Race status updated to Seeding');
+      toast.success(`${classId.replace('-', ' ')} is now ready for seeding`);
     }
   };
 
@@ -259,9 +292,11 @@ const Racers = () => {
           <Card className="shadow-md">
             <div className="flex flex-col">
               <CardHeader className="pb-2">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-primary" /> Racer Management
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold flex items-center">
+                    <Users className="h-5 w-5 mr-2 text-primary" /> Racer Management
+                  </h2>
+                </div>
                 <p className="text-muted-foreground">Manage your racers here.</p>
                 <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
               </CardHeader>
@@ -283,114 +318,155 @@ const Racers = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="space-y-6">
-        <PageHeader
-          title="Racer Management"
-          description="Manage your racers here."
-          icon={Users}
-        />
-        {raceClasses.map(raceClass => (
-          <Card key={raceClass} className="shadow-md">
+        <Card className="shadow-md">
+          <div className="flex flex-col">
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-primary" /> {raceClass.replace('-', ' ')}
-                </h2>
-                {activeRace && <RaceStatusBadge status={activeRace.status} size="sm" />}
-              </div>
-              <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
+              <h2 className="text-xl font-semibold mb-2 flex items-center">
+                <Users className="h-5 w-5 mr-2 text-primary" /> Racer Management
+              </h2>
+              <p className="text-muted-foreground text-sm">Manage your racers here.</p>
             </CardHeader>
+            <div className="px-6 mb-6">
+              <hr className="border-t border-muted" />
+            </div>
             <CardContent>
-              <div className="space-y-4">
-                {racersByClass[raceClass]?.length > 0 ? (
-                  <div className="space-y-2">
-                    {racersByClass[raceClass].map(racer => (
-                      <div
-                        key={racer.id}
-                        className={`flex items-center justify-between p-3 rounded-md transition-colors
-                          ${
-                            editingRacer?.id === racer.id
-                              ? 'bg-primary/5 border border-primary/20'
-                              : 'bg-muted/30'
-                          }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <span className="font-medium text-primary">#{racer.bibNumber}</span>
-                          <span>{racer.name}</span>
+              <Tabs defaultValue={activeRace?.id} className="w-full">
+                <TabsList className="w-full justify-start">
+                  {activeRaces.map(race => (
+                    <TabsTrigger 
+                      key={race.id} 
+                      value={race.id}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        {race.name}
+                        <div className="flex items-center gap-1">
+                          <RaceStatusBadge status={race.status} size="sm" />
+                          <CurrentRaceBadge 
+                            className="ml-1" 
+                            isActive={race.id === activeRace?.id} 
+                          />
                         </div>
-                        {activeRace?.status === RaceStatus.Configuring && (
-                          <div className="flex items-center gap-2">
-                            <Button
-                              onClick={() => setEditingRacer(racer)}
-                              variant="ghost"
-                              size="sm"
-                              className={`p-2 rounded-full transition-colors
-                                ${
-                                  editingRacer?.id === racer.id
-                                    ? 'bg-primary/10 hover:bg-primary/20 text-primary'
-                                    : 'hover:bg-muted'
-                                }`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="p-2 rounded-full transition-colors hover:bg-red-100"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Are you sure you want to delete this racer?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the racer
-                                    from the system.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => {
-                                      dispatch(
-                                        deletePersistedRacer({ id: racer.id, classId: racer.classId })
-                                      );
-                                      toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
-                                    }}
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                      </div>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {activeRaces.map(race => (
+                  <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
+                    {raceClasses.map((raceClass, index) => (
+                      <div key={raceClass.raceClass}>
+                        {index > 0 && <div className="h-px bg-border my-6" />}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-semibold flex items-center">
+                              <Users className="h-5 w-5 mr-2 text-primary" /> 
+                              {raceClass.raceClass.replace('-', ' ')}
+                            </h2>
+                            <RaceClassStatusBadge status={raceClass.status} size="sm" />
                           </div>
-                        )}
+
+                          <div className="space-y-4">
+                            {racersByClass[raceClass.raceClass]?.length > 0 ? (
+                              <div className="space-y-2">
+                                {racersByClass[raceClass.raceClass].map(racer => (
+                                  <div
+                                    key={racer.id}
+                                    className={`flex items-center justify-between p-3 rounded-md transition-colors
+                                      ${
+                                        editingRacer?.id === racer.id
+                                          ? 'bg-primary/5 border border-primary/20'
+                                          : 'bg-muted/30'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <span className="font-medium text-primary">#{racer.bibNumber}</span>
+                                      <span>{racer.name}</span>
+                                    </div>
+                                    {raceClass.status === RaceClassStatus.CREATED && (
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          onClick={() => setEditingRacer(racer)}
+                                          variant="ghost"
+                                          size="sm"
+                                          className={`p-2 rounded-full transition-colors
+                                            ${
+                                              editingRacer?.id === racer.id
+                                                ? 'bg-primary/10 hover:bg-primary/20 text-primary'
+                                                : 'hover:bg-muted'
+                                            }`}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="p-2 rounded-full transition-colors hover:bg-red-100"
+                                            >
+                                              <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>
+                                                Are you sure you want to delete this racer?
+                                              </AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the racer
+                                                from the system.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction
+                                                onClick={() => {
+                                                  dispatch(
+                                                    deletePersistedRacer({ id: racer.id, classId: racer.classId })
+                                                  );
+                                                  toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
+                                                }}
+                                              >
+                                                Delete
+                                              </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
+                                <p>No racers in this class yet. Add your first racer below.</p>
+                              </div>
+                            )}
+
+                            {raceClass.status === RaceClassStatus.CREATED ? (
+                              <RacerForm
+                                classId={raceClass.raceClass}
+                                editRacer={editingRacer?.classId === raceClass.raceClass ? editingRacer : null}
+                                onCancelEdit={() => setEditingRacer(null)}
+                                onComplete={() => handleCompleteClass(raceClass.raceClass)}
+                                showComplete={true}
+                              />
+                            ) : (
+                              <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                                <AlertCircle className="h-5 w-5" />
+                                <p>Racers for this class are now locked. This race class is in {raceClass.status.toLowerCase()} status.</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))}
-                  </div>
-                ) : (
-                  <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
-                    <p>No racers in this class yet. Add your first racer below.</p>
-                  </div>
-                )}
-
-                {activeRace?.status === RaceStatus.Configuring && (
-                  <RacerForm
-                    classId={raceClass}
-                    editRacer={editingRacer?.classId === raceClass ? editingRacer : null}
-                    onCancelEdit={() => setEditingRacer(null)}
-                    onComplete={handleCompleteClass}
-                    showComplete={true}
-                  />
-                )}
-              </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
             </CardContent>
-          </Card>
-        ))}
+          </div>
+        </Card>
       </div>
     </div>
   );

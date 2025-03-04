@@ -1,10 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { RootState } from '../store';
 
 export interface Racer {
   id: string;
   name: string;
   bibNumber: string;
   classId: string;
+  raceId: string;
 }
 
 interface RacersState {
@@ -39,18 +41,28 @@ export const loadRacersFromStorage = createAsyncThunk('racers/loadFromStorage', 
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
-  async (racer: Omit<Racer, 'id'>, { rejectWithValue, getState }) => {
-    // Check if a racer with this bib number already exists
-    const state = getState() as { racers: RacersState };
-    const existingRacer = state.racers.items.find(r => r.bibNumber === racer.bibNumber);
+  async (racer: Omit<Racer, 'id' | 'raceId'>, { rejectWithValue, getState }) => {
+    const state = getState() as RootState;
+    const currentRaceId = state.races.currentRaceId;
+
+    if (!currentRaceId) {
+      console.error('No active race found when trying to add racer');
+      return rejectWithValue({ error: 'No active race found' });
+    }
+
+    // Check if a racer with this bib number already exists in the current race
+    const existingRacer = state.racers.items.find(
+      r => r.bibNumber === racer.bibNumber && r.raceId === currentRaceId
+    );
 
     if (existingRacer) {
       return rejectWithValue({ existingRacer });
     }
 
-    const newRacer = {
+    const newRacer: Racer = {
       ...racer,
       id: crypto.randomUUID(),
+      raceId: currentRaceId
     };
 
     // Get existing racers
@@ -68,16 +80,20 @@ export const persistRacer = createAsyncThunk(
 
 export const updatePersistedRacer = createAsyncThunk(
   'racers/updatePersistedRacer',
-  async (racer: Racer) => {
+  async (racer: Racer, { getState }) => {
+    const state = getState() as RootState;
+    const currentRaceId = state.races.currentRaceId;
+
     const racers = getRacersFromStorage();
+    const updatedRacer = { ...racer, raceId: currentRaceId };
 
     const racerIndex = racers.findIndex(r => r.id === racer.id);
     if (racerIndex !== -1) {
-      racers[racerIndex] = racer;
+      racers[racerIndex] = updatedRacer;
       localStorage.setItem('racers', JSON.stringify(racers));
     }
 
-    return racer;
+    return updatedRacer;
   }
 );
 

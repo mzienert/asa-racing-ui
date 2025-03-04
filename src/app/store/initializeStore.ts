@@ -17,10 +17,16 @@ export const initializeStore = async (dispatch: AppDispatch) => {
       await dispatch(loadAuthFromStorage()).unwrap();
     }
   } catch (error) {
+    // Handle token expiration
+    if (error instanceof Error && error.message.includes('Token expired')) {
+      localStorage.removeItem('accessToken'); // Clean up expired token
+      window.location.href = '/login?reason=expired';
+      return; // Exit early to prevent loading other data with expired token
+    }
     console.error('Authentication loading failed:', error);
   }
 
-  // Load races and racers data
+  // Only load races and racers data if authentication didn't fail with token expiration
   dispatch(loadRacesFromStorage());
   dispatch(loadRacersFromStorage());
 };
