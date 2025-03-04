@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/app/store/store';
 
@@ -25,8 +25,8 @@ import { Trophy } from 'lucide-react';
 export interface RaceDetailsProps {
   race: {
     name: string;
-    date?: string;
-    raceClasses?: RaceClass[];
+    date: string;
+    raceClasses: RaceClass[];
     status: RaceStatus;
   };
 }
@@ -36,8 +36,6 @@ export default function RacesPage() {
   const activeRace = useSelector(selectActiveRace);
   const activeRaceId = useSelector(selectActiveRaceId);
   const allRaces = useSelector(selectRaces);
-  const [isCreatingRace, setIsCreatingRace] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     dispatch(loadRacesFromStorage());
@@ -49,18 +47,14 @@ export default function RacesPage() {
     raceClasses: RaceClass[];
     status: RaceStatus;
   }) => {
-    if (isEditing) {
-      dispatch(updatePersistedRace({ ...formData, id: activeRace!.id }));
-      setIsCreatingRace(false);
-      setIsEditing(false);
+    if (activeRace) {
+      dispatch(updatePersistedRace({ ...formData, id: activeRace.id }));
     } else {
       dispatch(persistRace(formData)).then(action => {
         const newRace = action.payload as { id: string };
         if (newRace && newRace.id && !activeRaceId) {
           dispatch(setCurrentRace(newRace.id));
         }
-        setIsCreatingRace(false);
-        setIsEditing(false);
       });
     }
   };
@@ -68,8 +62,6 @@ export default function RacesPage() {
   const handleDeleteRace = () => {
     if (activeRace) {
       dispatch(deletePersistedRace(activeRace.id));
-      setIsCreatingRace(false);
-      setIsEditing(false);
     }
   };
 
@@ -90,17 +82,9 @@ export default function RacesPage() {
             <CardContent>
               <RaceManagementContainer
                 activeRace={activeRace}
-                isCreatingRace={isCreatingRace}
-                isEditing={isEditing}
-                onStartNewRace={() => setIsCreatingRace(true)}
-                onEditRace={() => setIsEditing(true)}
+                hasActiveRace={!!activeRaceId}
                 onDeleteRace={handleDeleteRace}
                 onSubmitForm={handleSubmit}
-                onCancelForm={() => {
-                  setIsCreatingRace(false);
-                  setIsEditing(false);
-                }}
-                hasActiveRace={!!activeRaceId}
                 onSetCurrentRace={(id) => dispatch(setCurrentRace(id))}
               />
             </CardContent>
