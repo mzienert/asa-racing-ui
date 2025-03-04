@@ -43,15 +43,15 @@ export default function Brackets() {
       {raceClasses && raceClasses.length > 0 ? (
         <div>
           {/* Your bracket display logic here */}
-          {raceClasses.map((className: string) => (
+{/*           {raceClasses.map((className: string) => (
             <div key={className} className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">{className} Bracket</h2>
+              <h2 className="text-xl font-semibold mb-4">{className} Bracket</h2> */}
               {/* Bracket visualization component */}
-              {racersByClass && racersByClass[className] && (
+{/*               {racersByClass && racersByClass[className] && (
                 <BracketView racers={racersByClass[className]} />
               )}
             </div>
-          ))}
+          ))} */}
         </div>
       ) : (
         <p className="text-gray-500">No race classes defined yet.</p>
