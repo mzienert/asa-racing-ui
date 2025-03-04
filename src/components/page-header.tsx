@@ -1,10 +1,10 @@
-import { LucideIcon } from 'lucide-react'
-import { Card, CardHeader } from './ui/card'
+import { LucideIcon } from 'lucide-react';
+import { Card, CardHeader } from './ui/card';
 
 interface PageHeaderProps {
-  title: string
-  description: string
-  icon: LucideIcon
+  title: string;
+  description: string;
+  icon: LucideIcon;
 }
 
 export function PageHeader({ title, description, icon: Icon }: PageHeaderProps) {
@@ -17,5 +17,5 @@ export function PageHeader({ title, description, icon: Icon }: PageHeaderProps) 
         <p className="text-muted-foreground">{description}</p>
       </CardHeader>
     </Card>
-  )
-} 
+  );
+}

@@ -21,7 +21,14 @@ import type { AppDispatch } from '@/app/store/store';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { loadRacesFromStorage, setCurrentRace, updatePersistedRace, RaceStatus, RaceClass, RaceClassStatus } from '@/app/store/features/racesSlice';
+import {
+  loadRacesFromStorage,
+  setCurrentRace,
+  updatePersistedRace,
+  RaceStatus,
+  RaceClass,
+  RaceClassStatus,
+} from '@/app/store/features/racesSlice';
 import { Users, Edit, Trash2, Plus, AlertCircle, CheckCircle } from 'lucide-react';
 import {
   AlertDialog,
@@ -36,12 +43,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import RaceStatusBadge, { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
 import { PageHeader } from '@/components/page-header';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CurrentRaceBadge from '@/components/CurrentRaceBadge';
 
 interface RacerFormProps {
@@ -52,13 +54,19 @@ interface RacerFormProps {
   showComplete?: boolean;
 }
 
-const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete }: RacerFormProps) => {
+const RacerForm = ({
+  classId,
+  editRacer,
+  onCancelEdit,
+  onComplete,
+  showComplete,
+}: RacerFormProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [name, setName] = useState(editRacer?.name || '');
   const [bibNumber, setBibNumber] = useState(editRacer?.bibNumber || '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [bibError, setBibError] = useState<string | null>(null);
-  const raceClass = useSelector((state: RootState) => 
+  const raceClass = useSelector((state: RootState) =>
     selectRaceClasses(state).find(rc => rc.raceClass === classId)
   );
 
@@ -67,7 +75,10 @@ const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete 
     return (
       <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
         <AlertCircle className="h-5 w-5" />
-        <p>Racer management is locked. This race class is now in {raceClass?.status.toLowerCase()} status.</p>
+        <p>
+          Racer management is locked. This race class is now in {raceClass?.status.toLowerCase()}{' '}
+          status.
+        </p>
       </div>
     );
   }
@@ -217,12 +228,15 @@ const RacerForm = ({ classId, editRacer, onCancelEdit, onComplete, showComplete 
               <AlertDialogHeader>
                 <AlertDialogTitle>Complete Racer Configuration?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will finalize racers for this class. You won't be able to add or modify racers after this step.
+                  This will finalize racers for this class. You won't be able to add or modify
+                  racers after this step.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onComplete} className="bg-green-600 hover:bg-green-700">Complete</AlertDialogAction>
+                <AlertDialogAction onClick={onComplete} className="bg-green-600 hover:bg-green-700">
+                  Complete
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -238,9 +252,8 @@ const Racers = () => {
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-  const activeRaces = races.filter(race => 
-    race.status === RaceStatus.Configuring || 
-    race.status === RaceStatus.In_Progress
+  const activeRaces = races.filter(
+    race => race.status === RaceStatus.Configuring || race.status === RaceStatus.In_Progress
   );
 
   // Get race classes
@@ -250,10 +263,11 @@ const Racers = () => {
   const racersByClass = useSelector((state: RootState) => {
     const result: Record<string, Racer[]> = {};
     if (!activeRace) return result;
-    
+
     raceClasses.forEach(raceClass => {
-      result[raceClass.raceClass] = selectRacersByClass(state, raceClass.raceClass)
-        .filter(racer => racer.raceId === activeRace.id);
+      result[raceClass.raceClass] = selectRacersByClass(state, raceClass.raceClass).filter(
+        racer => racer.raceId === activeRace.id
+      );
     });
     return result;
   });
@@ -271,16 +285,16 @@ const Racers = () => {
 
   const handleCompleteClass = (classId: string) => {
     if (activeRace) {
-      const updatedRaceClasses = activeRace.raceClasses.map(rc => 
-        rc.raceClass === classId 
-          ? { ...rc, status: RaceClassStatus.Seeding }
-          : rc
+      const updatedRaceClasses = activeRace.raceClasses.map(rc =>
+        rc.raceClass === classId ? { ...rc, status: RaceClassStatus.Seeding } : rc
       );
-      
-      dispatch(updatePersistedRace({ 
-        ...activeRace, 
-        raceClasses: updatedRaceClasses
-      }));
+
+      dispatch(
+        updatePersistedRace({
+          ...activeRace,
+          raceClasses: updatedRaceClasses,
+        })
+      );
       toast.success(`${classId.replace('-', ' ')} is now ready for seeding`);
     }
   };
@@ -333,18 +347,14 @@ const Racers = () => {
               <Tabs defaultValue={activeRace?.id} className="w-full">
                 <TabsList className="w-full justify-start">
                   {activeRaces.map(race => (
-                    <TabsTrigger 
-                      key={race.id} 
-                      value={race.id}
-                      className="flex items-center gap-2"
-                    >
+                    <TabsTrigger key={race.id} value={race.id} className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
                         {race.name}
                         <div className="flex items-center gap-1">
                           <RaceStatusBadge status={race.status} size="sm" />
-                          <CurrentRaceBadge 
-                            className="ml-1" 
-                            isActive={race.id === activeRace?.id} 
+                          <CurrentRaceBadge
+                            className="ml-1"
+                            isActive={race.id === activeRace?.id}
                           />
                         </div>
                       </div>
@@ -358,10 +368,13 @@ const Racers = () => {
                         {index > 0 && <div className="h-px bg-border my-6" />}
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-semibold flex items-center">
-                              <Users className="h-5 w-5 mr-2 text-primary" /> 
-                              {raceClass.raceClass.replace('-', ' ')}
-                            </h2>
+                            <div>
+                              <h2 className="text-2xl font-semibold flex items-center">
+                                <Users className="h-5 w-5 mr-2 text-primary" />
+                                {raceClass.raceClass.replace('-', ' ')}
+                              </h2>
+                              <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
+                            </div>
                             <RaceClassStatusBadge status={raceClass.status} size="sm" />
                           </div>
 
@@ -379,7 +392,9 @@ const Racers = () => {
                                       }`}
                                   >
                                     <div className="flex items-center gap-4">
-                                      <span className="font-medium text-primary">#{racer.bibNumber}</span>
+                                      <span className="font-medium text-primary">
+                                        #{racer.bibNumber}
+                                      </span>
                                       <span>{racer.name}</span>
                                     </div>
                                     {raceClass.status === RaceClassStatus.CREATED && (
@@ -413,8 +428,8 @@ const Racers = () => {
                                                 Are you sure you want to delete this racer?
                                               </AlertDialogTitle>
                                               <AlertDialogDescription>
-                                                This action cannot be undone. This will permanently delete the racer
-                                                from the system.
+                                                This action cannot be undone. This will permanently
+                                                delete the racer from the system.
                                               </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -422,9 +437,14 @@ const Racers = () => {
                                               <AlertDialogAction
                                                 onClick={() => {
                                                   dispatch(
-                                                    deletePersistedRacer({ id: racer.id, classId: racer.classId })
+                                                    deletePersistedRacer({
+                                                      id: racer.id,
+                                                      classId: racer.classId,
+                                                    })
                                                   );
-                                                  toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
+                                                  toast.success(
+                                                    `Removed ${racer.name} with bib #${racer.bibNumber}`
+                                                  );
                                                 }}
                                               >
                                                 Delete
@@ -446,7 +466,11 @@ const Racers = () => {
                             {raceClass.status === RaceClassStatus.CREATED ? (
                               <RacerForm
                                 classId={raceClass.raceClass}
-                                editRacer={editingRacer?.classId === raceClass.raceClass ? editingRacer : null}
+                                editRacer={
+                                  editingRacer?.classId === raceClass.raceClass
+                                    ? editingRacer
+                                    : null
+                                }
                                 onCancelEdit={() => setEditingRacer(null)}
                                 onComplete={() => handleCompleteClass(raceClass.raceClass)}
                                 showComplete={true}
@@ -454,7 +478,10 @@ const Racers = () => {
                             ) : (
                               <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
                                 <AlertCircle className="h-5 w-5" />
-                                <p>Racers for this class are now locked. This race class is in {raceClass.status.toLowerCase()} status.</p>
+                                <p>
+                                  Racers for this class are now locked. This race class is in{' '}
+                                  {raceClass.status.toLowerCase()} status.
+                                </p>
                               </div>
                             )}
                           </div>

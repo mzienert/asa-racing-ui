@@ -1,12 +1,19 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 
+export interface SeedData {
+  time: string | null;
+  startingPosition: number | null;
+}
+
 export interface Racer {
   id: string;
   name: string;
   bibNumber: string;
   classId: string;
   raceId: string;
+  raceClass: string;
+  seedData: SeedData;
 }
 
 interface RacersState {
@@ -62,7 +69,7 @@ export const persistRacer = createAsyncThunk(
     const newRacer: Racer = {
       ...racer,
       id: crypto.randomUUID(),
-      raceId: currentRaceId
+      raceId: currentRaceId,
     };
 
     // Get existing racers
@@ -84,8 +91,12 @@ export const updatePersistedRacer = createAsyncThunk(
     const state = getState() as RootState;
     const currentRaceId = state.races.currentRaceId;
 
+    if (!currentRaceId) {
+      throw new Error('No active race found');
+    }
+
     const racers = getRacersFromStorage();
-    const updatedRacer = { ...racer, raceId: currentRaceId };
+    const updatedRacer = { ...racer };
 
     const racerIndex = racers.findIndex(r => r.id === racer.id);
     if (racerIndex !== -1) {

@@ -1,51 +1,10 @@
 import { RaceDetailsProps } from '@/app/admin/races/page';
 import { format } from 'date-fns';
-import {
-  Trophy,
-  CalendarIcon,
-  Users,
-  Flag,
-  CheckCircle2,
-  Settings,
-  Timer,
-} from 'lucide-react';
+import { Trophy, CalendarIcon, Users, Flag } from 'lucide-react';
 import { RaceStatus } from '@/app/store/features/racesSlice';
+import RaceStatusBadge from '@/components/RaceStatusBadge';
 
 const RaceDetails = ({ race }: RaceDetailsProps) => {
-  const getStatusIcon = (status: RaceStatus) => {
-    switch (status) {
-      case RaceStatus.Configuring:
-        return <Settings className="h-4 w-4 mr-2" />;
-      case RaceStatus.In_Progress:
-        return <Timer className="h-4 w-4 mr-2" />;
-      case RaceStatus.Completed:
-        return <CheckCircle2 className="h-4 w-4 mr-2" />;
-      default:
-        return <Settings className="h-4 w-4 mr-2" />;
-    }
-  };
-
-  const getStatusColor = (status: RaceStatus) => {
-    switch (status) {
-      case RaceStatus.Configuring:
-        return 'text-yellow-600';
-      case RaceStatus.In_Progress:
-        return 'text-green-600';
-      case RaceStatus.Completed:
-        return 'text-purple-600';
-      default:
-        return 'text-yellow-600';
-    }
-  };
-
-  const formatStatus = (status: RaceStatus): string => {
-    // Convert enum value like 'CONFIGURING' to 'Configuring'
-    return status
-      .toLowerCase()
-      .replace(/_/g, ' ')
-      .replace(/(?:^|\s)\S/g, char => char.toUpperCase());
-  };
-
   return (
     <div className="space-y-4 bg-muted/90 p-4 rounded-lg border border-muted/30">
       <div>
@@ -84,12 +43,7 @@ const RaceDetails = ({ race }: RaceDetailsProps) => {
           <Flag className="h-4 w-4 mr-2" /> Status:
         </h3>
         <p className="text-lg">
-          <span
-            className={`font-medium flex items-center ${getStatusColor(race.status || RaceStatus.Configuring)}`}
-          >
-            {getStatusIcon(race.status || RaceStatus.Configuring)}{' '}
-            {formatStatus(race.status || RaceStatus.Configuring)}
-          </span>
+          <RaceStatusBadge status={race.status || RaceStatus.Configuring} />
         </p>
       </div>
     </div>

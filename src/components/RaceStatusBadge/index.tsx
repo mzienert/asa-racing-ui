@@ -35,14 +35,17 @@ const RaceStatusBadge = ({ status, size = 'default' }: RaceStatusBadgeProps) => 
 
   const formatStatus = (status: RaceStatus): string => {
     if (!status) return 'Configuring';
-    return status.toString()
+    return status
+      .toString()
       .replace('_', ' ')
       .toLowerCase()
       .replace(/(?:^|\s)\S/g, char => char.toUpperCase());
   };
 
   return (
-    <span className={`font-medium inline-flex items-center px-2.5 py-1 rounded-full ${getStatusColor(status)}`}>
+    <span
+      className={`font-medium inline-flex items-center px-2.5 py-1 rounded-full ${getStatusColor(status)}`}
+    >
       {getStatusIcon(status)}
       <span className={size === 'sm' ? 'text-xs' : 'text-sm'}>{formatStatus(status)}</span>
     </span>
@@ -86,7 +89,9 @@ export const RaceClassStatusBadge = ({ status, size = 'default' }: RaceClassStat
   };
 
   return (
-    <span className={`font-medium inline-flex items-center px-2.5 py-1 rounded-full ${getStatusColor(status)}`}>
+    <span
+      className={`font-medium inline-flex items-center px-2.5 py-1 rounded-full ${getStatusColor(status)}`}
+    >
       {getStatusIcon(status)}
       <span className={size === 'sm' ? 'text-xs' : 'text-sm'}>{status}</span>
     </span>

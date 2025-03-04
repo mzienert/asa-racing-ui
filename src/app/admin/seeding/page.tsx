@@ -1,10 +1,5 @@
 'use client';
-import {
-  persistRacer,
-  updatePersistedRacer,
-  loadRacersFromStorage,
-  deletePersistedRacer,
-} from '@/app/store/features/racersSlice';
+import { updatePersistedRacer, loadRacersFromStorage } from '@/app/store/features/racersSlice';
 import {
   selectRaceClasses,
   selectRacersByClass,
@@ -21,28 +16,22 @@ import type { AppDispatch } from '@/app/store/store';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { loadRacesFromStorage, setCurrentRace, updatePersistedRace, RaceStatus, RaceClass, RaceClassStatus } from '@/app/store/features/racesSlice';
-import { Users, Edit, Trash2, Plus, AlertCircle, CheckCircle, Lock } from 'lucide-react';
+import { IMaskInput } from 'react-imask';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+  loadRacesFromStorage,
+  setCurrentRace,
+  RaceStatus,
+  RaceClassStatus,
+} from '@/app/store/features/racesSlice';
+import { Users, Plus, Lock, Check, X } from 'lucide-react';
 import RaceStatusBadge, { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
-import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import CurrentRaceBadge from '@/components/CurrentRaceBadge';
-
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
+  const [seedTimes, setSeedTimes] = useState<Record<string, string>>({});
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
@@ -59,6 +48,38 @@ const Racers = () => {
     return result;
   });
 
+  const handleSaveTime = (racerId: string, raceClass: string) => {
+    const racer = racersByClass[raceClass]?.find(r => r.id === racerId);
+    if (!racer || !seedTimes[racerId]) return;
+
+    const updatedRacer: Racer = {
+      ...racer,
+      seedData: {
+        time: seedTimes[racerId],
+        startingPosition: null,
+      },
+    };
+
+    dispatch(updatePersistedRacer(updatedRacer))
+      .unwrap()
+      .then(() => {
+        toast.success('Seed time saved successfully');
+      })
+      .catch(error => {
+        toast.error('Failed to save seed time');
+        console.error('Error saving seed time:', error);
+      });
+  };
+
+  const handleClearTime = (racerId: string) => {
+    console.log('Clearing time for racer:', racerId);
+    setSeedTimes(prev => {
+      const newTimes = { ...prev };
+      delete newTimes[racerId];
+      return newTimes;
+    });
+  };
+
   useEffect(() => {
     // Load both races and racers
     dispatch(loadRacesFromStorage());
@@ -70,6 +91,21 @@ const Racers = () => {
     }
   }, [dispatch, races.length, hasRace]);
 
+  // Separate effect to handle seed time initialization
+  useEffect(() => {
+    // Only initialize if we have racer data
+    if (Object.keys(racersByClass).length > 0) {
+      const initialSeedTimes: Record<string, string> = {};
+      Object.values(racersByClass)
+        .flat()
+        .forEach(racer => {
+          if (racer.seedData?.time) {
+            initialSeedTimes[racer.id] = racer.seedData.time;
+          }
+        });
+      setSeedTimes(initialSeedTimes);
+    }
+  }, [racersByClass]);
 
   if (!hasRace) {
     return (
@@ -116,82 +152,130 @@ const Racers = () => {
             <CardContent>
               <Tabs defaultValue={activeRace?.id} className="w-full">
                 <TabsList className="w-full justify-start">
-                  {races.filter(race => 
-                    race.status === RaceStatus.Configuring || 
-                    race.status === RaceStatus.In_Progress
-                  ).map(race => (
-                    <TabsTrigger 
-                      key={race.id} 
-                      value={race.id}
-                      className="flex items-center gap-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        {race.name}
-                        <div className="flex items-center gap-1">
-                          <RaceStatusBadge status={race.status} size="sm" />
-                          <CurrentRaceBadge 
-                            className="ml-1" 
-                            isActive={race.id === activeRace?.id} 
-                          />
-                        </div>
-                      </div>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {races.filter(race => 
-                  race.status === RaceStatus.Configuring || 
-                  race.status === RaceStatus.In_Progress
-                ).map(race => (
-                  <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
-                    {raceClasses.map((raceClass, index) => (
-                      <div key={raceClass.raceClass}>
-                        {index > 0 && <div className="h-px bg-border my-6" />}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-semibold flex items-center">
-                              <Users className="h-5 w-5 mr-2 text-primary" /> 
-                              {raceClass.raceClass.replace('-', ' ')}
-                            </h2>
-                            <RaceClassStatusBadge status={raceClass.status} size="sm" />
+                  {races
+                    .filter(
+                      race =>
+                        race.status === RaceStatus.Configuring ||
+                        race.status === RaceStatus.In_Progress
+                    )
+                    .map(race => (
+                      <TabsTrigger
+                        key={race.id}
+                        value={race.id}
+                        className="flex items-center gap-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          {race.name}
+                          <div className="flex items-center gap-1">
+                            <RaceStatusBadge status={race.status} size="sm" />
+                            <CurrentRaceBadge
+                              className="ml-1"
+                              isActive={race.id === activeRace?.id}
+                            />
                           </div>
-
+                        </div>
+                      </TabsTrigger>
+                    ))}
+                </TabsList>
+                {races
+                  .filter(
+                    race =>
+                      race.status === RaceStatus.Configuring ||
+                      race.status === RaceStatus.In_Progress
+                  )
+                  .map(race => (
+                    <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
+                      {raceClasses.map((raceClass, index) => (
+                        <div key={raceClass.raceClass}>
+                          {index > 0 && <div className="h-px bg-border my-6" />}
                           <div className="space-y-4">
-                            {raceClass.status !== RaceClassStatus.Seeding && (
-                              <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
-                                <Lock className="h-5 w-5" />
-                                <p>This race class cannot be seeded. Please complete the racers in this class in order to seed the race.</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h2 className="text-2xl font-semibold flex items-center">
+                                  <Users className="h-5 w-5 mr-2 text-primary" />
+                                  {raceClass.raceClass.replace('-', ' ')}
+                                </h2>
+                                <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
                               </div>
-                            )}
-                            {racersByClass[raceClass.raceClass]?.length > 0 ? (
-                              <div className="space-y-2">
-                                {racersByClass[raceClass.raceClass].map(racer => (
-                                  <div
-                                    key={racer.id}
-                                    className={`flex items-center justify-between p-3 rounded-md transition-colors
+                              <RaceClassStatusBadge status={raceClass.status} size="sm" />
+                            </div>
+
+                            <div className="space-y-4">
+                              {raceClass.status !== RaceClassStatus.Seeding && (
+                                <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+                                  <Lock className="h-5 w-5" />
+                                  <p>
+                                    This race class cannot be seeded. Please complete the racers in
+                                    this class in order to seed the race.
+                                  </p>
+                                </div>
+                              )}
+                              {racersByClass[raceClass.raceClass]?.length > 0 ? (
+                                <div className="space-y-2">
+                                  {racersByClass[raceClass.raceClass].map(racer => (
+                                    <div
+                                      key={racer.id}
+                                      className={`flex items-center justify-between p-3 rounded-md transition-colors
                                       ${
                                         editingRacer?.id === racer.id
                                           ? 'bg-primary/5 border border-primary/20'
                                           : 'bg-muted/30'
                                       }`}
-                                  >
-                                    <div className="flex items-center gap-4">
-                                      <span className="font-medium text-primary">#{racer.bibNumber}</span>
-                                      <span>{racer.name}</span>
+                                    >
+                                      <div className="flex items-center gap-4">
+                                        <span className="font-medium text-primary">
+                                          #{racer.bibNumber}
+                                        </span>
+                                        <span>{racer.name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <IMaskInput
+                                          name={`time-${racer.id}`}
+                                          className="w-32 px-3 py-1 rounded-md border border-input bg-background"
+                                          mask="00:00:000"
+                                          definitions={{
+                                            '0': /[0-9]/,
+                                          }}
+                                          unmask={false}
+                                          placeholder="00:00:000"
+                                          value={seedTimes[racer.id] || ''}
+                                          onAccept={value =>
+                                            setSeedTimes(prev => ({ ...prev, [racer.id]: value }))
+                                          }
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                          onClick={() =>
+                                            handleSaveTime(racer.id, raceClass.raceClass)
+                                          }
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          onClick={() => handleClearTime(racer.id)}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
-                                <p>No racers in this class yet. Add your first racer below.</p>
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
+                                  <p>No racers in this class yet. Add your first racer below.</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </TabsContent>
-                ))}
+                      ))}
+                    </TabsContent>
+                  ))}
               </Tabs>
             </CardContent>
           </div>

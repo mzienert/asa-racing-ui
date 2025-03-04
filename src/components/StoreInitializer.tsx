@@ -30,4 +30,4 @@ const StoreInitializer: React.FC = () => {
   return null;
 };
 
-export default StoreInitializer; 
+export default StoreInitializer;

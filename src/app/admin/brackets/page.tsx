@@ -1,10 +1,7 @@
 'use client';
 import React from 'react';
 import { useSelector } from 'react-redux';
-import {
-  selectRaceClasses,
-  selectRacersByAllClasses
-} from '@/app/store/selectors/raceSelectors';
+import { selectRaceClasses, selectRacersByAllClasses } from '@/app/store/selectors/raceSelectors';
 import BracketView from './BracketView';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';

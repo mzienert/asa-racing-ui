@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     const checkAuth = async () => {
       try {
         const authenticated = await isAuthenticated();
-        
+
         if (!authenticated) {
           // Redirect to home page if not authenticated
           router.push('/');
@@ -33,11 +33,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Show nothing while checking authentication
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   // If we get here, user is authenticated
   return <>{children}</>;
-} 
+}

@@ -178,7 +178,7 @@ const BracketView: React.FC<BracketViewProps> = ({ racers }) => {
       }
 
       // Update positions for all affected groups
-     /*  [activeGroup, overGroup].forEach((group: Racer[]) => {
+      /*  [activeGroup, overGroup].forEach((group: Racer[]) => {
         group.forEach((racer: Racer, idx: number) => {
           racer.position = idx + 1;
           dispatch(updatePersistedRacer(racer));
