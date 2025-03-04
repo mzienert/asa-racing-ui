@@ -187,14 +187,9 @@ const RaceDetailsForm = ({
       />
 
       <form onSubmit={handleSubmit} className="w-full space-y-4 max-w-2xl">
-        <h3 className="text-lg font-medium mb-4">
-          {isEditing ? 'Edit Race' : 'Create New Race'}
-        </h3>
+        <h3 className="text-lg font-medium mb-4">{isEditing ? 'Edit Race' : 'Create New Race'}</h3>
         <div>
-          <label
-            htmlFor="raceName"
-            className="block text-sm font-medium mb-1 flex items-center"
-          >
+          <label htmlFor="raceName" className="block text-sm font-medium mb-1 flex items-center">
             <Trophy className="h-4 w-4 mr-2" /> Race Name
           </label>
           <input
@@ -234,12 +229,7 @@ const RaceDetailsForm = ({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={handleDateChange}
-                initialFocus
-              />
+              <Calendar mode="single" selected={date} onSelect={handleDateChange} initialFocus />
             </PopoverContent>
           </Popover>
           {dateError && (
@@ -273,9 +263,7 @@ const RaceDetailsForm = ({
               <Checkbox
                 id="mens-amateur"
                 checked={raceClasses.some(rc => rc.raceClass === 'mens-amateur')}
-                onCheckedChange={checked =>
-                  handleRaceClassChange(!!checked, 'mens-amateur')
-                }
+                onCheckedChange={checked => handleRaceClassChange(!!checked, 'mens-amateur')}
               />
               <label
                 htmlFor="mens-amateur"
@@ -306,11 +294,7 @@ const RaceDetailsForm = ({
           )}
         </div>
         <div className="flex justify-start space-x-2 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit">{isEditing ? 'Update Race' : 'Create Race'}</Button>
@@ -320,4 +304,4 @@ const RaceDetailsForm = ({
   );
 };
 
-export default RaceDetailsForm; 
+export default RaceDetailsForm;

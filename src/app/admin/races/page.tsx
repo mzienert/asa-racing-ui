@@ -10,10 +10,7 @@ import {
   RaceStatus,
   RaceClass,
 } from '@/app/store/features/racesSlice';
-import {
-  selectActiveRace,
-  selectRaces,
-} from '@/app/store/selectors/raceSelectors';
+import { selectActiveRace, selectRaces } from '@/app/store/selectors/raceSelectors';
 import RaceManagementContainer from '@/components/RaceManagementContainer';
 import RaceListContainer from '@/components/RaceListContainer';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -62,7 +59,7 @@ export default function RacesPage() {
                 activeRace={activeRace}
                 hasActiveRace={!!activeRace}
                 onDeleteRace={handleDeleteRace}
-                onSetCurrentRace={(id) => dispatch(setCurrentRace(id))}
+                onSetCurrentRace={id => dispatch(setCurrentRace(id))}
               />
             </CardContent>
           </div>
@@ -71,8 +68,8 @@ export default function RacesPage() {
         <RaceListContainer
           races={allRaces}
           activeRaceId={activeRace?.id || null}
-          onSetCurrent={(id) => dispatch(setCurrentRace(id))}
-          onDelete={(id) => dispatch(deletePersistedRace(id))}
+          onSetCurrent={id => dispatch(setCurrentRace(id))}
+          onDelete={id => dispatch(deletePersistedRace(id))}
         />
       </div>
     </div>
