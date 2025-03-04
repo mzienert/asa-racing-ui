@@ -126,6 +126,7 @@ const RaceDetailsForm = ({
       if (newRace?.id) {
         onSetCurrentRace(newRace.id);
       }
+      onCancel();
     }
     setShowSetCurrentRaceDialog(false);
     newRaceRef.current = null;
@@ -134,6 +135,7 @@ const RaceDetailsForm = ({
   const handleKeepCurrentRace = async () => {
     if (newRaceRef.current) {
       await dispatch(persistRace(newRaceRef.current));
+      onCancel();
     }
     setShowSetCurrentRaceDialog(false);
     newRaceRef.current = null;

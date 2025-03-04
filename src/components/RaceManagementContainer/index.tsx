@@ -55,15 +55,12 @@ const RaceManagementContainer = ({
   return (
     <RaceDetailsForm
       isEditing={isEditing}
-      initialData={
-        isEditing && activeRace
-          ? {
-              name: activeRace.name,
-              date: activeRace.date ? new Date(activeRace.date) : undefined,
-              raceClasses: activeRace.raceClasses,
-            }
-          : undefined
-      }
+      initialData={isEditing && activeRace ? {
+        id: activeRace.id,
+        name: activeRace.name,
+        date: activeRace.date ? new Date(activeRace.date) : undefined,
+        raceClasses: activeRace.raceClasses,
+      } : undefined}
       hasActiveRace={hasActiveRace}
       onSetCurrentRace={onSetCurrentRace}
       onCancel={handleCancelForm}
