@@ -1,17 +1,17 @@
 'use client';
-import { updatePersistedRacer, loadRacersFromStorage } from '@/app/store/features/racersSlice';
+import { updatePersistedRacer, loadRacersFromStorage } from '@/store/features/racersSlice';
 import {
   selectRaceClasses,
   selectRaces,
   selectActiveRace,
   selectRacersByAllClasses,
-} from '@/app/store/selectors/raceSelectors';
+} from '@/store/selectors/raceSelectors';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectHasActiveRace } from '@/app/store/selectors/raceSelectors';
+import { selectHasActiveRace } from '@/store/selectors/raceSelectors';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import type { Racer } from '@/app/store/features/racersSlice';
-import type { AppDispatch } from '@/app/store/store';
+import type { Racer } from '@/store/features/racersSlice';
+import type { AppDispatch } from '@/store/store';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,13 @@ import {
   setCurrentRace,
   RaceStatus,
   RaceClassStatus,
-} from '@/app/store/features/racesSlice';
+} from '@/store/features/racesSlice';
 import { Users, Plus, Lock, Check, X } from 'lucide-react';
-import RaceStatusBadge, { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import CurrentRaceBadge from '@/components/CurrentRaceBadge';
+import { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import RaceTabsHeader from '@/components/RaceTabsHeader';
+import NoRaceState from '@/components/NoRaceState';
+import PageHeader from '@/components/PageHeader';
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -99,29 +101,10 @@ const Racers = () => {
 
   if (!hasRace) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="space-y-4">
-          <Card className="shadow-md">
-            <div className="flex flex-col">
-              <CardHeader className="pb-2">
-                <h2 className="text-xl font-semibold flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-primary" /> Racer Management
-                </h2>
-                <p className="text-muted-foreground">Manage your racers here.</p>
-                <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center py-8">
-                <p className="text-muted-foreground mb-4">Please create a race first</p>
-                <Link href="/admin/races/create">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" /> Create Race
-                  </Button>
-                </Link>
-              </CardContent>
-            </div>
-          </Card>
-        </div>
-      </div>
+      <NoRaceState
+        title="Race Seeding"
+        description="Seed your races here."
+      />
     );
   }
 
@@ -130,43 +113,18 @@ const Racers = () => {
       <div className="space-y-6">
         <Card className="shadow-md">
           <div className="flex flex-col">
-            <CardHeader className="pb-2">
-              <h2 className="text-xl font-semibold mb-2 flex items-center">
-                <Users className="h-5 w-5 mr-2 text-primary" /> Race Seeding
-              </h2>
-              <p className="text-muted-foreground text-sm">Seed your races here.</p>
-            </CardHeader>
-            <div className="px-6 mb-6">
-              <hr className="border-t border-muted" />
-            </div>
+            <PageHeader
+              icon={Users}
+              title="Race Seeding"
+              description="Seed your races here."
+            />
             <CardContent>
               <Tabs defaultValue={activeRace?.id} className="w-full">
-                <TabsList className="w-full justify-start">
-                  {races
-                    .filter(
-                      race =>
-                        race.status === RaceStatus.Configuring ||
-                        race.status === RaceStatus.In_Progress
-                    )
-                    .map(race => (
-                      <TabsTrigger
-                        key={race.id}
-                        value={race.id}
-                        className="flex items-center gap-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          {race.name}
-                          <div className="flex items-center gap-1">
-                            <RaceStatusBadge status={race.status} size="sm" />
-                            <CurrentRaceBadge
-                              className="ml-1"
-                              isActive={race.id === activeRace?.id}
-                            />
-                          </div>
-                        </div>
-                      </TabsTrigger>
-                    ))}
-                </TabsList>
+                <RaceTabsHeader 
+                  races={races}
+                  activeRaceId={activeRace?.id}
+                  filterStatus={true}
+                />
                 {races
                   .filter(
                     race =>

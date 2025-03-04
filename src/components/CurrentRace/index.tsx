@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import RaceDetails from '@/components/RaceDetails';
-import { RaceStatus, RaceClass } from '@/app/store/features/racesSlice';
+import { RaceStatus, RaceClass } from '@/store/features/racesSlice';
 
 interface CurrentRaceProps {
   race: {

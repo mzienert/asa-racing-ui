@@ -1,6 +1,6 @@
 'use client'
-import { useAppDispatch, useAppSelector } from './store/hooks'
-import { logout } from './store/features/authSlice'
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import { logout } from '../store/features/authSlice'
 import MainCard from '@/components/MainCard'
 import { LogIn } from "lucide-react";
 import { useRouter } from 'next/navigation'

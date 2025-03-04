@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Racer } from '@/app/store/features/racersSlice';
+import { Racer } from '@/store/features/racersSlice';
 import {
   DndContext,
   useSensors,
@@ -12,7 +12,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@/app/store/store';
+import type { AppDispatch } from '@/store/store';
 import { RaceMatch } from './RaceMatch';
 
 interface BracketViewProps {

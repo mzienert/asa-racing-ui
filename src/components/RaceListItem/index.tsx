@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Race } from '@/app/store/features/racesSlice';
+import { Race } from '@/store/features/racesSlice';
 import { Button } from '../ui/button';
 import {
   AlertDialog,

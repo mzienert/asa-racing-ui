@@ -1,10 +1,10 @@
 'use client';
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { selectRaceClasses } from '@/app/store/selectors/raceSelectors';
+import { selectRaceClasses } from '@/store/selectors/raceSelectors';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { RootState } from '@/app/store/store';
+import { RootState } from '@/store/store';
 
 export default function Brackets() {
   // Use memoized selectors with proper typing

@@ -1,6 +1,7 @@
 import { RootState } from '../store';
 import { Racer } from '../features/racersSlice';
 import { createSelector } from '@reduxjs/toolkit';
+import { findRaceClassById } from '@/helpers/racers';
 
 export const selectRaces = (state: RootState) => state.races.items;
 
@@ -81,6 +82,11 @@ export const selectRaceById = (state: RootState, id: string) => {
   const races = selectRaces(state);
   return races.find(race => race.id === id);
 };
+
+export const selectRaceClassById = createSelector(
+  [selectRaceClasses, (_state: RootState, classId: string) => classId],
+  (raceClasses, classId) => findRaceClassById(raceClasses, classId)
+);
 
 export const selectRacersByActiveRaceClass = createSelector(
   [selectRaceClasses, selectRacersItems, selectActiveRace],

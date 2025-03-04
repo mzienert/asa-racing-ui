@@ -1,4 +1,4 @@
-import { Racer } from '@/app/store/features/racersSlice';
+import { Racer } from '@/store/features/racersSlice';
 
 export function organizeFirstRoundPairs(racers: Racer[]): Racer[][] {
   const firstRoundGroups: Racer[][] = [];

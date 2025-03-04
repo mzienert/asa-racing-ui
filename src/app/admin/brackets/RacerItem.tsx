@@ -1,5 +1,5 @@
 import React from 'react';
-import { Racer } from '@/app/store/features/racersSlice';
+import { Racer } from '@/store/features/racersSlice';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 

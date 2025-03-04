@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CurrentRace from '@/components/CurrentRace';
 import RaceDetailsForm from '@/components/RaceDetailsForm';
-import { Race } from '@/app/store/features/racesSlice';
+import { Race } from '@/store/features/racesSlice';
 
 interface RaceManagementContainerProps {
   activeRace: Race | null;

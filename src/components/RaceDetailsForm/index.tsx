@@ -3,14 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Trophy, CalendarIcon, Users, AlertCircle } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/app/store/store';
-import { persistRace, updatePersistedRace } from '@/app/store/features/racesSlice';
+import { AppDispatch } from '@/store/store';
+import { persistRace, updatePersistedRace } from '@/store/features/racesSlice';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { RaceClass, RaceClassStatus, RaceStatus } from '@/app/store/features/racesSlice';
+import { RaceClass, RaceClassStatus, RaceStatus } from '@/store/features/racesSlice';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
 
 interface RaceDetailsFormProps {

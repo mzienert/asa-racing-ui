@@ -2,7 +2,7 @@
 import { ListTodo } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import RaceListItem from '@/components/RaceListItem';
-import { RaceStatus, RaceClass } from '@/app/store/features/racesSlice';
+import { RaceStatus, RaceClass } from '@/store/features/racesSlice';
 
 type Race = {
   id: string;

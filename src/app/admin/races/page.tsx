@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch } from '@/app/store/store';
+import { AppDispatch } from '@/store/store';
 
 import {
   loadRacesFromStorage,
@@ -9,12 +9,13 @@ import {
   setCurrentRace,
   RaceStatus,
   RaceClass,
-} from '@/app/store/features/racesSlice';
-import { selectActiveRace, selectRaces } from '@/app/store/selectors/raceSelectors';
+} from '@/store/features/racesSlice';
+import { selectActiveRace, selectRaces } from '@/store/selectors/raceSelectors';
 import RaceManagementContainer from '@/components/RaceManagementContainer';
 import RaceListContainer from '@/components/RaceListContainer';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
 
 export interface RaceDetailsProps {
   race: {
@@ -45,15 +46,11 @@ export default function RacesPage() {
       <div className="space-y-6">
         <Card className="shadow-md">
           <div className="flex flex-col">
-            <CardHeader className="pb-2">
-              <h2 className="text-xl font-semibold mb-2 flex items-center">
-                <Trophy className="h-5 w-5 mr-2 text-primary" /> Race Management
-              </h2>
-              <p className="text-muted-foreground text-sm">Manage your racing events here.</p>
-            </CardHeader>
-            <div className="px-6 mb-6">
-              <hr className="border-t border-muted" />
-            </div>
+            <PageHeader
+              icon={Trophy}
+              title="Race Management"
+              description="Manage your racing events here."
+            />
             <CardContent>
               <RaceManagementContainer
                 activeRace={activeRace}

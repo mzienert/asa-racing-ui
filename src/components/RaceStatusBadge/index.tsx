@@ -1,4 +1,4 @@
-import { RaceStatus, RaceClassStatus } from '@/app/store/features/racesSlice';
+import { RaceStatus, RaceClassStatus } from '@/store/features/racesSlice';
 import { Settings, UserPlus, Timer, CheckCircle2 } from 'lucide-react';
 
 interface RaceStatusBadgeProps {

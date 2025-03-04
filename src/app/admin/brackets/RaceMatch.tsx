@@ -1,5 +1,5 @@
 import React from 'react';
-import { Racer } from '@/app/store/features/racersSlice';
+import { Racer } from '@/store/features/racersSlice';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { RacerItem } from './RacerItem'; // We'll create this separately
 

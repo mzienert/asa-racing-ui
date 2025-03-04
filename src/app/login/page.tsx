@@ -1,7 +1,7 @@
 'use client';
 import MainCard from '@/components/MainCard';
-import { setUser } from '../store/features/authSlice';
-import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../../store/features/authSlice';
+import { useAppDispatch } from '../../store/hooks';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';

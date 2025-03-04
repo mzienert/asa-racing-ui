@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { initializeStore } from '../app/store/initializeStore';
-import { AppDispatch } from '../app/store/store';
+import { initializeStore } from '../store/initializeStore';
+import { AppDispatch } from '../store/store';
 
 /**
  * Component that initializes the Redux store with data from localStorage

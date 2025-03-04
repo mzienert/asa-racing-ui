@@ -1,7 +1,7 @@
 import { RaceDetailsProps } from '@/app/admin/races/page';
 import { format } from 'date-fns';
 import { Trophy, CalendarIcon, Users, Flag } from 'lucide-react';
-import { RaceStatus } from '@/app/store/features/racesSlice';
+import { RaceStatus } from '@/store/features/racesSlice';
 import RaceStatusBadge from '@/components/RaceStatusBadge';
 
 const RaceDetails = ({ race }: RaceDetailsProps) => {
