@@ -1,8 +1,7 @@
 'use client';
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { selectRaceClasses, selectRacersByAllClasses } from '@/app/store/selectors/raceSelectors';
-import BracketView from './BracketView';
+import { selectRaceClasses } from '@/app/store/selectors/raceSelectors';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { RootState } from '@/app/store/store';
@@ -10,7 +9,7 @@ import { RootState } from '@/app/store/store';
 export default function Brackets() {
   // Use memoized selectors with proper typing
   const raceClasses = useSelector((state: RootState) => selectRaceClasses(state));
-  const racersByClass = useSelector((state: RootState) => selectRacersByAllClasses(state));
+/*   const racersByClass = useSelector((state: RootState) => selectRacersByAllClasses(state)); */
 
   // Check if there's an active race or any races at all
   const hasRaces = useSelector((state: RootState) => (state.races?.items || []).length > 0);
