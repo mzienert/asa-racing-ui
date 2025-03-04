@@ -1,5 +1,5 @@
 import { LucideIcon } from 'lucide-react';
-import { CardHeader } from './ui/card';
+import { CardHeader } from '../ui/card';
 
 interface PageHeaderProps {
   icon: LucideIcon;

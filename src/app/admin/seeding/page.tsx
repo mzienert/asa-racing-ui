@@ -25,7 +25,7 @@ import {
 import { Users, Plus, Lock, Check, X } from 'lucide-react';
 import { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import RaceTabsHeader from '@/components/RaceTabsHeader';
+import RaceTabsHeader from '@/components/RaceTabsHeader/RaceTabsHeader';
 import NoRaceState from '@/components/NoRaceState';
 import PageHeader from '@/components/PageHeader';
 
