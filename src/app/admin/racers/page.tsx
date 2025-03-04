@@ -137,7 +137,16 @@ const RacerForm = ({
       toast.success(`Updated ${name} with Racer #${bibNumber}`);
       onCancelEdit?.();
     } else {
-      const result = await dispatch(persistRacer({ name, bibNumber, classId }));
+      const result = await dispatch(persistRacer({ 
+        name, 
+        bibNumber, 
+        classId,
+        raceClass: classId,
+        seedData: {
+          time: null,
+          startingPosition: null
+        }
+      }));
       if (result.type === 'racers/persistRacer/rejected') {
         const payload = result.payload as { existingRacer: Racer };
         toast.error(`Bib #${bibNumber} is already assigned to ${payload.existingRacer.name}`);
