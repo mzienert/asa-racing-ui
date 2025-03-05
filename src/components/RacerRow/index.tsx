@@ -26,7 +26,7 @@ export const RacerRow = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleDelete = () => {
-    dispatch(deletePersistedRacer({ id: racer.id, classId: racer.classId }));
+    dispatch(deletePersistedRacer({ id: racer.id, raceClass: racer.raceClass }));
     toast.success(`Removed ${racer.name} with bib #${racer.bibNumber}`);
     setShowDeleteDialog(false);
   };
@@ -46,7 +46,7 @@ export const RacerRow = ({
         </span>
         <span>{racer.name}</span>
       </div>
-      {raceClassStatus === RaceClassStatus.CREATED && (
+      {raceClassStatus === RaceClassStatus.Created && (
         <div className="flex items-center gap-2">
           <Button
             onClick={() => onSetEditingRacer(racer)}
