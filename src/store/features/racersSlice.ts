@@ -37,7 +37,6 @@ const getRacersFromStorage = (): Racer[] => {
     const parsedData = JSON.parse(storedData);
     return Array.isArray(parsedData) ? parsedData : [];
   } catch (e) {
-    console.error('Error parsing racers from localStorage:', e);
     return [];
   }
 };
@@ -48,18 +47,16 @@ export const loadRacersFromStorage = createAsyncThunk('racers/loadFromStorage', 
 
 export const persistRacer = createAsyncThunk(
   'racers/persistRacer',
-  async (racer: Omit<Racer, 'id' | 'raceId'>, { rejectWithValue, getState }) => {
+  async (racer: Omit<Racer, 'id'>, { rejectWithValue, getState }) => {
     const state = getState() as RootState;
-    const currentRaceId = state.races.currentRaceId;
 
-    if (!currentRaceId) {
-      console.error('No active race found when trying to add racer');
-      return rejectWithValue({ error: 'No active race found' });
+    if (!racer.raceId) {
+      return rejectWithValue({ error: 'No race ID provided' });
     }
 
-    // Check if a racer with this bib number already exists in the current race
+    // Check if a racer with this bib number already exists in this race
     const existingRacer = state.racers.items.find(
-      r => r.bibNumber === racer.bibNumber && r.raceId === currentRaceId
+      r => r.bibNumber === racer.bibNumber && r.raceId === racer.raceId
     );
 
     if (existingRacer) {
@@ -69,7 +66,13 @@ export const persistRacer = createAsyncThunk(
     const newRacer: Racer = {
       ...racer,
       id: crypto.randomUUID(),
-      raceId: currentRaceId,
+      raceId: racer.raceId, // Ensure raceId is set
+      classId: racer.classId, // Ensure classId is set
+      raceClass: racer.classId, // Set raceClass to match classId
+      seedData: {
+        time: null,
+        startingPosition: null
+      }
     };
 
     // Get existing racers

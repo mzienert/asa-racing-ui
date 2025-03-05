@@ -25,9 +25,10 @@ import {
 import { Users, Plus, Lock, Check, X } from 'lucide-react';
 import { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import RaceTabsHeader from '@/components/RaceTabsHeader/RaceTabsHeader';
+import RaceTabsHeader from '@/components/RaceTabsHeader';
 import NoRaceState from '@/components/NoRaceState';
 import PageHeader from '@/components/PageHeader';
+import { RaceClassHeader } from '@/components/RaceClassHeader';
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -120,11 +121,7 @@ const Racers = () => {
             />
             <CardContent>
               <Tabs defaultValue={activeRace?.id} className="w-full">
-                <RaceTabsHeader 
-                  races={races}
-                  activeRaceId={activeRace?.id}
-                  filterStatus={true}
-                />
+                <RaceTabsHeader />
                 {races
                   .filter(
                     race =>
@@ -137,17 +134,10 @@ const Racers = () => {
                         <div key={raceClass.raceClass}>
                           {index > 0 && <div className="h-px bg-border my-6" />}
                           <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h2 className="text-2xl font-semibold flex items-center">
-                                  <Users className="h-5 w-5 mr-2 text-primary" />
-                                  {raceClass.raceClass?.replace('-', ' ') || raceClass.raceClass}
-                                </h2>
-                                <div className="h-1 w-20 bg-primary/70 rounded-full mt-2"></div>
-                              </div>
-                              <RaceClassStatusBadge status={raceClass.status} size="sm" />
-                            </div>
-
+                            <RaceClassHeader 
+                              raceClassName={raceClass.raceClass}
+                              status={raceClass.status}
+                            />
                             <div className="space-y-4">
                               {raceClass.status !== RaceClassStatus.Seeding && (
                                 <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">

@@ -1,15 +1,22 @@
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Race, RaceStatus } from '@/store/features/racesSlice';
+import { RaceStatus } from '@/store/features/racesSlice';
 import RaceStatusBadge from '@/components/RaceStatusBadge';
 import CurrentRaceBadge from '@/components/CurrentRaceBadge';
+import { useSelector } from 'react-redux';
+import { selectRaces, selectActiveRace } from '@/store/selectors/raceSelectors';
+import { getActiveRaces } from '@/helpers/racers';
 
 interface RaceTabsHeaderProps {
-  races: Race[];
-  activeRaceId?: string;
   filterStatus?: boolean;
+  selectedRaceId?: string;
+  onTabChange: (raceId: string) => void;
 }
 
-export const RaceTabsHeader = ({ races: initialRaces, activeRaceId, filterStatus = false }: RaceTabsHeaderProps) => {
+export const RaceTabsHeader = ({ filterStatus = false, selectedRaceId, onTabChange }: RaceTabsHeaderProps) => {
+  const allRaces = useSelector(selectRaces);
+  const activeRace = useSelector(selectActiveRace);
+  const initialRaces = getActiveRaces(allRaces);
+  
   const races = filterStatus
     ? initialRaces.filter(
         race =>
@@ -25,6 +32,7 @@ export const RaceTabsHeader = ({ races: initialRaces, activeRaceId, filterStatus
           key={race.id}
           value={race.id}
           className="flex items-center gap-2"
+          onClick={() => onTabChange(race.id)}
         >
           <div className="flex items-center gap-2">
             {race.name}
@@ -32,7 +40,7 @@ export const RaceTabsHeader = ({ races: initialRaces, activeRaceId, filterStatus
               <RaceStatusBadge status={race.status} size="sm" />
               <CurrentRaceBadge
                 className="ml-1"
-                isActive={race.id === activeRaceId}
+                isActive={race.id === activeRace?.id}
               />
             </div>
           </div>

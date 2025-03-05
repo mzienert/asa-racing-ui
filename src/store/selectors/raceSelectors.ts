@@ -102,3 +102,43 @@ export const selectRacersByActiveRaceClass = createSelector(
     return result;
   }
 );
+
+export const selectRacersByRaceId = createSelector(
+  [selectRaces, selectRacersItems, (_state: RootState, raceId: string) => raceId],
+  (races, racers, raceId) => {
+    const result: Record<string, Racer[]> = {};
+    const race = races.find(r => r.id === raceId);
+    
+    if (!race) return result;
+    
+    // Initialize result with empty arrays for each class in this race
+    race.raceClasses.forEach(rc => {
+      result[rc.raceClass] = [];
+    });
+
+    // Filter and group racers for this race by class
+    racers.forEach(racer => {
+      if (racer.raceId === raceId && result.hasOwnProperty(racer.classId)) {
+        result[racer.classId].push(racer);
+      }
+    });
+
+    return result;
+  }
+);
+
+export const selectRaceClassesByRaceId = createSelector(
+  [selectRaces, (_state: RootState, raceId: string) => raceId],
+  (races, raceId) => {
+    const race = races.find(r => r.id === raceId);
+    return race?.raceClasses || [];
+  }
+);
+
+export const selectRaceClassByRaceId = createSelector(
+  [selectRaces, (_state: RootState, raceId: string) => raceId, (_state: RootState, _raceId: string, classId: string) => classId],
+  (races, raceId, classId) => {
+    const race = races.find(r => r.id === raceId);
+    return race?.raceClasses.find(rc => rc.raceClass === classId);
+  }
+);

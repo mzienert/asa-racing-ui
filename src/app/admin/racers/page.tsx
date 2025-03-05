@@ -1,82 +1,74 @@
 'use client';
-import { loadRacersFromStorage, deletePersistedRacer } from '@/store/features/racersSlice';
+import { loadRacersFromStorage } from '@/store/features/racersSlice';
 import {
-  selectRaceClasses,
   selectRaces,
   selectActiveRace,
-  selectRacersByActiveRaceClass,
+  selectRacersByRaceId,
+  selectRaceClassesByRaceId,
 } from '@/store/selectors/raceSelectors';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectHasActiveRace } from '@/store/selectors/raceSelectors';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import type { Racer } from '@/store/features/racersSlice';
+import { Card, CardContent } from '@/components/ui/card';
 import type { AppDispatch } from '@/store/store';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import {
   loadRacesFromStorage,
   setCurrentRace,
-  updatePersistedRace,
-  RaceClassStatus,
 } from '@/store/features/racesSlice';
-import { Users, Edit, Trash2, AlertCircle } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { RaceClassStatusBadge } from '@/components/RaceStatusBadge';
+import { Users } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import RacerForm from '@/components/RacerForm';
 import { getActiveRaces } from '@/helpers/racers';
 import NoRaceState from '@/components/NoRaceState';
-import RaceTabsHeader from '@/components/RaceTabsHeader/RaceTabsHeader';
+import RaceTabsHeader from '@/components/RaceTabsHeader';
 import PageHeader from '@/components/PageHeader';
 import RacerContainer from '@/components/RacerContainer';
+import { RootState } from '@/store/store';
+import { Race } from '@/store/features/racesSlice';
+
+interface RaceContentProps {
+  race: Race;
+}
+
+const RaceContent = ({ race }: RaceContentProps) => {
+  const classes = useSelector((state: RootState) => selectRaceClassesByRaceId(state, race.id));
+  const racers = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
+
+  return (
+    <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
+      {classes.map((raceClass, index) => (
+        <RacerContainer
+          key={raceClass.raceClass}
+          raceClass={raceClass}
+          racersByClass={racers}
+          showDivider={index > 0}
+          selectedRaceId={race.id}
+        />
+      ))}
+    </TabsContent>
+  );
+};
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-  const raceClasses = useSelector(selectRaceClasses);
-  const racersByClass = useSelector(selectRacersByActiveRaceClass);
-
+  const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
+  
   const activeRaces = getActiveRaces(races);
 
   useEffect(() => {
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
 
-    // If we have races but no active race, set the first race as active
     if (races.length > 0 && !hasRace) {
       dispatch(setCurrentRace(races[0].id));
     }
   }, [dispatch, races.length, hasRace]);
 
-  const handleCompleteClass = (classId: string) => {
-    if (activeRace) {
-      const updatedRaceClasses = activeRace.raceClasses.map(rc =>
-        rc.raceClass === classId ? { ...rc, status: RaceClassStatus.Seeding } : rc
-      );
-
-      dispatch(
-        updatePersistedRace({
-          ...activeRace,
-          raceClasses: updatedRaceClasses,
-        })
-      );
-      toast.success(`${classId?.replace('-', ' ') || classId} is now ready for seeding`);
-    }
-  };
+  useEffect(() => {
+    setSelectedRaceId(activeRace?.id);
+  }, [activeRace?.id]);
 
   if (!hasRace) {
     return (
@@ -98,26 +90,13 @@ const Racers = () => {
               description="Manage your racers here."
             />
             <CardContent>
-              <Tabs defaultValue={activeRace?.id} className="w-full">
+              <Tabs value={selectedRaceId} className="w-full">
                 <RaceTabsHeader 
-                  races={activeRaces}
-                  activeRaceId={activeRace?.id}
+                  selectedRaceId={selectedRaceId}
+                  onTabChange={setSelectedRaceId}
                 />
                 {activeRaces.map(race => (
-                  <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
-                    {raceClasses.map((raceClass, index) => (
-                      <RacerContainer
-                        key={raceClass.raceClass}
-                        raceClass={raceClass}
-                        racersByClass={racersByClass}
-                        editingRacer={editingRacer}
-                        onSetEditingRacer={setEditingRacer}
-                        onDeleteRacer={(id, classId) => dispatch(deletePersistedRacer({ id, classId }))}
-                        onCompleteClass={handleCompleteClass}
-                        showDivider={index > 0}
-                      />
-                    ))}
-                  </TabsContent>
+                  <RaceContent key={race.id} race={race} />
                 ))}
               </Tabs>
             </CardContent>

@@ -1,6 +1,6 @@
 import { persistRacer, Racer, updatePersistedRacer } from '@/store/features/racersSlice';
 import { RaceClassStatus } from '@/store/features/racesSlice';
-import { selectRaceClassById } from '@/store/selectors/raceSelectors';
+import { selectRaceClassByRaceId } from '@/store/selectors/raceSelectors';
 import { AppDispatch, RootState } from '@/store/store';
 import { AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
@@ -21,32 +21,40 @@ import {
 
 interface RacerFormProps {
   classId: string;
-  editRacer?: Racer | null;
-  onCancelEdit?: () => void;
+  raceId: string;
   onComplete?: () => void;
   showComplete?: boolean;
+  editingRacer?: Racer | null;
+  onEditComplete?: () => void;
 }
 
 const RacerForm = ({
   classId,
-  editRacer,
-  onCancelEdit,
+  raceId,
   onComplete,
   showComplete,
+  editingRacer,
+  onEditComplete,
 }: RacerFormProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const [name, setName] = useState(editRacer?.name || '');
-  const [bibNumber, setBibNumber] = useState(editRacer?.bibNumber || '');
+  const [name, setName] = useState('');
+  const [bibNumber, setBibNumber] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [bibError, setBibError] = useState<string | null>(null);
-  const raceClass = useSelector((state: RootState) => selectRaceClassById(state, classId));
+  
+  const raceClass = useSelector((state: RootState) => 
+    selectRaceClassByRaceId(state, raceId, classId)
+  );
 
   useEffect(() => {
-    if (editRacer) {
-      setName(editRacer.name);
-      setBibNumber(editRacer.bibNumber);
+    if (editingRacer) {
+      setName(editingRacer.name);
+      setBibNumber(editingRacer.bibNumber);
+    } else {
+      setName('');
+      setBibNumber('');
     }
-  }, [editRacer]);
+  }, [editingRacer]);
 
   // If the race class is not in Configuring status, don't render the form
   if (raceClass?.status !== RaceClassStatus.CREATED) {
@@ -105,10 +113,18 @@ const RacerForm = ({
       return;
     }
 
-    if (editRacer) {
-      dispatch(updatePersistedRacer({ ...editRacer, name, bibNumber, classId }));
-      toast.success(`Updated ${name} with Racer #${bibNumber}`);
-      onCancelEdit?.();
+    if (editingRacer) {
+      const result = await dispatch(
+        updatePersistedRacer({
+          ...editingRacer,
+          name,
+          bibNumber,
+        })
+      );
+      if (result.type === 'racers/updatePersistedRacer/fulfilled') {
+        toast.success(`Updated ${name}`);
+        onEditComplete?.();
+      }
     } else {
       const result = await dispatch(
         persistRacer({
@@ -116,10 +132,11 @@ const RacerForm = ({
           bibNumber,
           classId,
           raceClass: classId,
+          raceId,
           seedData: {
             time: null,
             startingPosition: null,
-          },
+          }
         })
       );
       if (result.type === 'racers/persistRacer/rejected') {
@@ -127,16 +144,10 @@ const RacerForm = ({
         toast.error(`Bib #${bibNumber} is already assigned to ${payload.existingRacer.name}`);
       } else {
         toast.success(`Added ${name} with Racer #${bibNumber}`);
+        setName('');
+        setBibNumber('');
       }
     }
-    setName('');
-    setBibNumber('');
-  };
-
-  const handleCancel = () => {
-    setName('');
-    setBibNumber('');
-    onCancelEdit?.();
   };
 
   return (
@@ -191,14 +202,9 @@ const RacerForm = ({
       <div className="flex justify-start space-x-2 pt-2">
         <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="h-4 w-4 mr-2" />
-          {editRacer ? 'Update Racer' : 'Add Racer'}
+          Add Racer
         </Button>
-        {editRacer && (
-          <Button type="button" variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-        )}
-        {showComplete && !editRacer && (
+        {showComplete && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="bg-green-600 text-white hover:bg-green-700">
