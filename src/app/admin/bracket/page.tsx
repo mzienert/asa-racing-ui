@@ -529,15 +529,19 @@ const Bracket = () => {
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
     dispatch(loadBracketsFromStorage());
-
-    if (races.length > 0 && !hasRace) {
-      dispatch(setCurrentRace(races[0].id));
-    }
-  }, [dispatch, races, hasRace]);
+  }, [dispatch]);
 
   useEffect(() => {
-    setSelectedRaceId(activeRace?.id);
-  }, [activeRace?.id]);
+    if (races.length > 0 && !hasRace && !activeRace) {
+      dispatch(setCurrentRace(races[0].id));
+    }
+  }, [dispatch, races, hasRace, activeRace]);
+
+  useEffect(() => {
+    if (activeRace?.id && activeRace.id !== selectedRaceId) {
+      setSelectedRaceId(activeRace.id);
+    }
+  }, [activeRace?.id, selectedRaceId]);
 
   const handleResetBrackets = () => {
     if (window.confirm('Are you sure you want to reset all brackets? This cannot be undone.')) {
