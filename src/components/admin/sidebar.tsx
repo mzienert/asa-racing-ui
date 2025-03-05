@@ -1,4 +1,4 @@
-import { Trophy, Users, ListTodo, ClipboardList } from 'lucide-react';
+import { Trophy, Users, ListTodo, ClipboardList, ListOrdered } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -28,11 +28,11 @@ const navigationItems = [
     icon: ClipboardList,
     href: '/admin/seeding',
   },
-/*   {
-    title: 'Brackets',
+  {
+    title: 'Bracket',
     icon: ListOrdered,
-    href: '/admin/brackets',
-  }, */
+    href: '/admin/bracket',
+  },
   {
     title: 'Results',
     icon: ListTodo,

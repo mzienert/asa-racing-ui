@@ -37,7 +37,7 @@ const SeedingContent = ({ race }: SeedingContentProps) => {
       {selectedRaceClasses.map((raceClass, index) => (
         <SeedingContainer
           key={raceClass.raceClass}
-          raceClass={raceClass}
+          raceClass={{ ...raceClass, raceId: race.id }}
           racersByClass={racersByClass}
           showDivider={index > 0}
         />

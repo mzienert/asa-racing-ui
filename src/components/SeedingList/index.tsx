@@ -2,11 +2,22 @@ import { Racer, updatePersistedRacer } from '@/store/features/racersSlice';
 import { IMaskInput } from 'react-imask';
 import { Check, X, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { RaceClassStatus } from '@/store/features/racesSlice';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/store';
+import { RaceClassStatus, updatePersistedRace } from '@/store/features/racesSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
 import { createBracket } from '@/store/features/bracketSlice';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
+import { useState } from 'react';
 
 interface SeedingListProps {
   racers: Racer[];
@@ -17,6 +28,7 @@ interface SeedingListProps {
   raceClass: string;
   status: RaceClassStatus;
   raceId: string;
+  onStatusChange?: (status: RaceClassStatus) => void;
 }
 
 const SeedingList = ({
@@ -30,8 +42,23 @@ const SeedingList = ({
   raceId,
 }: SeedingListProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Get the current race from the store
+  const race = useSelector((state: RootState) => {
+    console.log('Looking for race with ID:', raceId);
+    console.log('Available races:', state.races.items);
+    return state.races.items.find(r => r.id === raceId);
+  });
 
   const handleCompleteSeeding = async () => {
+    setShowConfirmDialog(false);
+
+    if (!race) {
+      toast.error('Race not found');
+      return;
+    }
+
     // Get racers with seed times and sort them
     const racersWithTimes = racers
       .filter(racer => racer.seedData?.time)
@@ -55,24 +82,48 @@ const SeedingList = ({
           ...racer,
           seedData: {
             ...racer.seedData,
-            startingPosition: i + 1
-          }
+            startingPosition: i + 1,
+          },
         };
         await dispatch(updatePersistedRacer(updatedRacer)).unwrap();
         updatedRacers.push(updatedRacer);
       }
 
+      console.log('Updated racers with positions:', updatedRacers);
+
       // Create the bracket with the updated racers
-      await dispatch(createBracket({ 
-        racers: updatedRacers,
-        raceId,
-        raceClass
-      })).unwrap();
-      
+      await dispatch(
+        createBracket({
+          racers: updatedRacers,
+          raceId,
+          raceClass,
+        })
+      ).unwrap();
+
+      console.log('Bracket created, updating race class status');
+
+      // Update the race class status to Racing
+      const updatedRaceClasses = race.raceClasses.map(rc => {
+        console.log('Checking race class:', rc.raceClass, 'against:', raceClass);
+        return rc.raceClass === raceClass ? { ...rc, status: RaceClassStatus.Racing } : rc;
+      });
+
+      console.log('Updated race classes:', updatedRaceClasses);
+
+      const updatedRace = {
+        ...race,
+        raceClasses: updatedRaceClasses,
+      };
+
+      console.log('Updating race with:', updatedRace);
+
+      const result = await dispatch(updatePersistedRace(updatedRace)).unwrap();
+      console.log('Update race result:', result);
+
       toast.success('Starting positions assigned and bracket created successfully');
     } catch (error) {
+      console.error('Error in complete seeding:', error);
       toast.error('Failed to complete seeding');
-      console.error('Error completing seeding:', error);
     }
   };
 
@@ -94,7 +145,7 @@ const SeedingList = ({
           <div className="flex items-center gap-4">
             <span className="font-medium text-primary">#{racer.bibNumber}</span>
             <span>{racer.name}</span>
-            {status === RaceClassStatus.Created && racer.seedData?.time && (
+            {status !== RaceClassStatus.Seeding && racer.seedData?.time && (
               <span className="text-muted-foreground">Time: {racer.seedData.time}</span>
             )}
           </div>
@@ -132,15 +183,33 @@ const SeedingList = ({
           )}
         </div>
       ))}
-      <div className="flex justify-start mt-4">
-        <Button
-          className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4"
-          onClick={handleCompleteSeeding}
-        >
-          <CheckCircle className="h-5 w-5" />
-          Complete Seeding
-        </Button>
-      </div>
+      {status === RaceClassStatus.Seeding && (
+        <div className="flex justify-start mt-4">
+          <Button
+            className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4"
+            onClick={() => setShowConfirmDialog(true)}
+          >
+            <CheckCircle className="h-5 w-5" />
+            Complete Seeding
+          </Button>
+        </div>
+      )}
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Complete Race Seeding</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to complete seeding? Racer times will be locked and the race
+              will be set to Racing. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCompleteSeeding}>Complete Seeding</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

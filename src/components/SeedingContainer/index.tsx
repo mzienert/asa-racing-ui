@@ -1,12 +1,13 @@
 import { Racer } from '@/store/features/racersSlice';
-import { RaceClassStatus } from '@/store/features/racesSlice';
+import { RaceClassStatus, Race } from '@/store/features/racesSlice';
 import { RaceClassHeader } from '../RaceClassHeader';
 import { Lock } from 'lucide-react';
 import SeedingList from '../SeedingList';
 import { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
 import { updatePersistedRacer } from '@/store/features/racersSlice';
+import { updatePersistedRace } from '@/store/features/racesSlice';
 import { toast } from 'sonner';
 
 interface SeedingContainerProps {
@@ -37,6 +38,58 @@ const SeedingContainer = ({
 }: SeedingContainerProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [seedTimes, setSeedTimes] = useState<Record<string, string>>({});
+  
+  // Get the current race ID from the store
+  const currentRaceId = useSelector((state: RootState) => state.races.currentRaceId);
+  
+  // Get the full race object from the store
+  const race = useSelector((state: RootState) => 
+    state.races.items.find(r => r.id === currentRaceId)
+  );
+
+  useEffect(() => {
+    if (racersByClass[raceClass.raceClass]?.length > 0) {
+      const initialSeedTimes: Record<string, string> = {};
+      racersByClass[raceClass.raceClass].forEach(racer => {
+        if (racer.seedData?.time) {
+          initialSeedTimes[racer.id] = racer.seedData.time;
+        }
+      });
+      setSeedTimes(initialSeedTimes);
+    }
+  }, [racersByClass, raceClass.raceClass]);
+
+  // Early return if no currentRaceId
+  if (!currentRaceId) {
+    return null;
+  }
+
+  const handleStatusChange = async (newStatus: RaceClassStatus) => {
+    if (!race) {
+      toast.error('Race not found');
+      return;
+    }
+
+    try {
+      // Update the specific race class status within the race
+      const updatedRaceClasses = race.raceClasses.map(rc => 
+        rc.raceClass === raceClass.raceClass
+          ? { ...rc, status: newStatus }
+          : rc
+      );
+
+      const updatedRace: Race = {
+        ...race,
+        raceClasses: updatedRaceClasses
+      };
+
+      await dispatch(updatePersistedRace(updatedRace)).unwrap();
+      toast.success('Race status updated successfully');
+    } catch (error) {
+      toast.error('Failed to update race status');
+      console.error('Error updating race status:', error);
+    }
+  };
 
   const handleSaveTime = (racerId: string, raceClass: string) => {
     const racer = racersByClass[raceClass]?.find(r => r.id === racerId);
@@ -73,18 +126,6 @@ const SeedingContainer = ({
     setSeedTimes(prev => ({ ...prev, [racerId]: value }));
   };
 
-  useEffect(() => {
-    if (racersByClass[raceClass.raceClass]?.length > 0) {
-      const initialSeedTimes: Record<string, string> = {};
-      racersByClass[raceClass.raceClass].forEach(racer => {
-        if (racer.seedData?.time) {
-          initialSeedTimes[racer.id] = racer.seedData.time;
-        }
-      });
-      setSeedTimes(initialSeedTimes);
-    }
-  }, [racersByClass, raceClass.raceClass]);
-
   return (
     <div>
       {showDivider && <div className="h-px bg-border my-6" />}
@@ -92,7 +133,11 @@ const SeedingContainer = ({
         <RaceClassHeader raceClassName={raceClass.raceClass} status={raceClass.status} />
         <div className="space-y-4">
           {raceClass.status !== RaceClassStatus.Seeding && (
-            <SeedingWarning message="This race class cannot be seeded. Please complete the racers in this class in order to seed the race." />
+            <SeedingWarning message={
+              raceClass.status === RaceClassStatus.Racing
+                ? "Race seeding is locked. This race is now in progress."
+                : "This race class cannot be seeded. Please complete the racers in this class in order to seed the race."
+            } />
           )}
           <SeedingList
             racers={racersByClass[raceClass.raceClass] || []}
@@ -102,7 +147,8 @@ const SeedingContainer = ({
             onAcceptTime={handleAcceptTime}
             raceClass={raceClass.raceClass}
             status={raceClass.status}
-            raceId={raceClass.raceId}
+            raceId={currentRaceId}
+            onStatusChange={handleStatusChange}
           />
         </div>
       </div>

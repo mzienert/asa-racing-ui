@@ -133,6 +133,29 @@ export const setCurrentRace = createAsyncThunk(
   }
 );
 
+export const updateRaceClass = createAsyncThunk(
+  'races/updateRaceClass',
+  async ({ raceId, raceClass, updates }: { raceId: string; raceClass: string; updates: Partial<RaceClass> }) => {
+    const races = getRacesFromStorage();
+    const raceIndex = races.findIndex(r => r.id === raceId);
+    
+    if (raceIndex !== -1) {
+      const race = races[raceIndex];
+      const raceClassIndex = race.raceClasses.findIndex(rc => rc.raceClass === raceClass);
+      
+      if (raceClassIndex !== -1) {
+        race.raceClasses[raceClassIndex] = {
+          ...race.raceClasses[raceClassIndex],
+          ...updates
+        };
+        localStorage.setItem('races', JSON.stringify(races));
+        return { raceId, raceClass, updates };
+      }
+    }
+    throw new Error('Race or race class not found');
+  }
+);
+
 const racesSlice = createSlice({
   name: 'races',
   initialState,
@@ -169,6 +192,16 @@ const racesSlice = createSlice({
       })
       .addCase(setCurrentRace.fulfilled, (state, action) => {
         state.currentRaceId = action.payload;
+      })
+      .addCase(updateRaceClass.fulfilled, (state, action) => {
+        const { raceId, raceClass, updates } = action.payload;
+        const race = state.items.find(r => r.id === raceId);
+        if (race) {
+          const raceClassItem = race.raceClasses.find(rc => rc.raceClass === raceClass);
+          if (raceClassItem) {
+            Object.assign(raceClassItem, updates);
+          }
+        }
       });
   },
 });
