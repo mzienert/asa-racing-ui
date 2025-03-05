@@ -1,8 +1,12 @@
-import { Racer } from '@/store/features/racersSlice';
+import { Racer, updatePersistedRacer } from '@/store/features/racersSlice';
 import { IMaskInput } from 'react-imask';
-import { Check, X } from 'lucide-react';
+import { Check, X, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RaceClassStatus } from '@/store/features/racesSlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
+import { createBracket } from '@/store/features/bracketSlice';
+import { toast } from 'sonner';
 
 interface SeedingListProps {
   racers: Racer[];
@@ -12,6 +16,7 @@ interface SeedingListProps {
   onAcceptTime: (racerId: string, value: string) => void;
   raceClass: string;
   status: RaceClassStatus;
+  raceId: string;
 }
 
 const SeedingList = ({
@@ -22,7 +27,55 @@ const SeedingList = ({
   onAcceptTime,
   raceClass,
   status,
+  raceId,
 }: SeedingListProps) => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  const handleCompleteSeeding = async () => {
+    // Get racers with seed times and sort them
+    const racersWithTimes = racers
+      .filter(racer => racer.seedData?.time)
+      .sort((a, b) => {
+        const timeA = a.seedData.time || '';
+        const timeB = b.seedData.time || '';
+        return timeA.localeCompare(timeB);
+      });
+
+    if (racersWithTimes.length === 0) {
+      toast.error('No seed times have been saved');
+      return;
+    }
+
+    try {
+      // Update each racer with their starting position
+      const updatedRacers = [];
+      for (let i = 0; i < racersWithTimes.length; i++) {
+        const racer = racersWithTimes[i];
+        const updatedRacer: Racer = {
+          ...racer,
+          seedData: {
+            ...racer.seedData,
+            startingPosition: i + 1
+          }
+        };
+        await dispatch(updatePersistedRacer(updatedRacer)).unwrap();
+        updatedRacers.push(updatedRacer);
+      }
+
+      // Create the bracket with the updated racers
+      await dispatch(createBracket({ 
+        racers: updatedRacers,
+        raceId,
+        raceClass
+      })).unwrap();
+      
+      toast.success('Starting positions assigned and bracket created successfully');
+    } catch (error) {
+      toast.error('Failed to complete seeding');
+      console.error('Error completing seeding:', error);
+    }
+  };
+
   if (racers.length === 0) {
     return (
       <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
@@ -79,6 +132,15 @@ const SeedingList = ({
           )}
         </div>
       ))}
+      <div className="flex justify-start mt-4">
+        <Button
+          className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4"
+          onClick={handleCompleteSeeding}
+        >
+          <CheckCircle className="h-5 w-5" />
+          Complete Seeding
+        </Button>
+      </div>
     </div>
   );
 };

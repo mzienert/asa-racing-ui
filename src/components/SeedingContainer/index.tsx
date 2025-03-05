@@ -13,6 +13,7 @@ interface SeedingContainerProps {
   raceClass: {
     raceClass: string;
     status: RaceClassStatus;
+    raceId: string;
   };
   racersByClass: Record<string, Racer[]>;
   showDivider?: boolean;
@@ -101,6 +102,7 @@ const SeedingContainer = ({
             onAcceptTime={handleAcceptTime}
             raceClass={raceClass.raceClass}
             status={raceClass.status}
+            raceId={raceClass.raceId}
           />
         </div>
       </div>

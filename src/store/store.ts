@@ -2,12 +2,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './features/authSlice';
 import racesReducer from './features/racesSlice';
 import racersReducer from './features/racersSlice';
-
+import bracketReducer from './features/bracketSlice';
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     races: racesReducer,
     racers: racersReducer,
+    brackets: bracketReducer
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
