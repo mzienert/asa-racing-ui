@@ -7,7 +7,7 @@ export enum RaceStatus {
 }
 
 export enum RaceClassStatus {
-  CREATED = 'CREATED',
+  Created = 'CREATED',
   Seeding = 'SEEDING',
   Racing = 'RACING',
   Completed = 'COMPLETED',

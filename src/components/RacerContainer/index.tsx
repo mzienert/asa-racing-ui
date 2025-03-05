@@ -31,7 +31,7 @@ export const RacerContainer = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);
 
-  const selectedRaceClass = useSelector((state: RootState) => 
+  const selectedRaceClass = useSelector((state: RootState) =>
     selectRaceClassByRaceId(state, selectedRaceId, raceClass.raceClass)
   );
 
@@ -62,16 +62,13 @@ export const RacerContainer = ({
     <div>
       {showDivider && <div className="h-px bg-border my-6" />}
       <div className="space-y-4">
-        <RaceClassHeader 
-          raceClassName={raceClass.raceClass}
-          status={currentStatus}
-        />
+        <RaceClassHeader raceClassName={raceClass.raceClass} status={currentStatus} />
 
         <div className="space-y-4">
           <RacerList
             racers={racersByClass[raceClass.raceClass] || []}
             raceClassStatus={currentStatus}
-            classId={raceClass.raceClass}
+            raceClass={raceClass.raceClass}
             onEditingStateChange={(isEditing, racer) => handleEditingStateChange(isEditing, racer)}
           />
 
@@ -99,4 +96,4 @@ export const RacerContainer = ({
   );
 };
 
-export default RacerContainer; 
+export default RacerContainer;
