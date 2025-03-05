@@ -20,7 +20,7 @@ import {
 } from '../ui/alert-dialog';
 
 interface RacerFormProps {
-  classId: string;
+  raceClass: string;
   raceId: string;
   onComplete?: () => void;
   showComplete?: boolean;
@@ -29,7 +29,7 @@ interface RacerFormProps {
 }
 
 const RacerForm = ({
-  classId,
+  raceClass,
   raceId,
   onComplete,
   showComplete,
@@ -42,8 +42,8 @@ const RacerForm = ({
   const [nameError, setNameError] = useState<string | null>(null);
   const [bibError, setBibError] = useState<string | null>(null);
   
-  const raceClass = useSelector((state: RootState) => 
-    selectRaceClassByRaceId(state, raceId, classId)
+  const raceClassInfo = useSelector((state: RootState) => 
+    selectRaceClassByRaceId(state, raceId, raceClass)
   );
 
   useEffect(() => {
@@ -57,12 +57,12 @@ const RacerForm = ({
   }, [editingRacer]);
 
   // If the race class is not in Configuring status, don't render the form
-  if (raceClass?.status !== RaceClassStatus.CREATED) {
+  if (raceClassInfo?.status !== RaceClassStatus.CREATED) {
     return (
       <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
         <AlertCircle className="h-5 w-5" />
         <p>
-          Racer management is locked. This race class is now in {raceClass?.status.toLowerCase()}{' '}
+          Racer management is locked. This race class is now in {raceClassInfo?.status.toLowerCase()}{' '}
           status.
         </p>
       </div>
@@ -130,8 +130,7 @@ const RacerForm = ({
         persistRacer({
           name,
           bibNumber,
-          classId,
-          raceClass: classId,
+          raceClass,
           raceId,
           seedData: {
             time: null,

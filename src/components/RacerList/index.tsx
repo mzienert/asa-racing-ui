@@ -6,14 +6,14 @@ import { useState } from 'react';
 interface RacerListProps {
   racers: Racer[];
   raceClassStatus: RaceClassStatus;
-  classId: string;
+  raceClass: string;
   onEditingStateChange?: (isEditing: boolean, racer: Racer | null) => void;
 }
 
 export const RacerList = ({
   racers,
   raceClassStatus,
-  classId,
+  raceClass,
   onEditingStateChange,
 }: RacerListProps) => {
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);

@@ -10,7 +10,6 @@ export interface Racer {
   id: string;
   name: string;
   bibNumber: string;
-  classId: string;
   raceId: string;
   raceClass: string;
   seedData: SeedData;
@@ -67,8 +66,7 @@ export const persistRacer = createAsyncThunk(
       ...racer,
       id: crypto.randomUUID(),
       raceId: racer.raceId, // Ensure raceId is set
-      classId: racer.classId, // Ensure classId is set
-      raceClass: racer.classId, // Set raceClass to match classId
+      raceClass: racer.raceClass, // Use raceClass directly
       seedData: {
         time: null,
         startingPosition: null
@@ -113,13 +111,13 @@ export const updatePersistedRacer = createAsyncThunk(
 
 export const deletePersistedRacer = createAsyncThunk(
   'racers/deletePersistedRacer',
-  async ({ id, classId }: { id: string; classId: string }) => {
+  async ({ id, raceClass }: { id: string; raceClass: string }) => {
     const racers = getRacersFromStorage();
 
     const filteredRacers = racers.filter(r => r.id !== id);
     localStorage.setItem('racers', JSON.stringify(filteredRacers));
 
-    return { id, classId };
+    return { id, raceClass };
   }
 );
 

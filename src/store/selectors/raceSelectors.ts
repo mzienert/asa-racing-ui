@@ -37,12 +37,12 @@ export const selectRaceClasses = (state: RootState) => {
   return [];
 };
 
-export const selectRacersByClass = (state: RootState, classId: string) => {
+export const selectRacersByClass = (state: RootState, raceClass: string) => {
   if (!state.racers || !state.racers.items || !Array.isArray(state.racers.items)) {
     return [];
   }
 
-  const racersInClass = state.racers.items.filter((racer: Racer) => racer.classId === classId);
+  const racersInClass = state.racers.items.filter((racer: Racer) => racer.raceClass === raceClass);
   return racersInClass;
 };
 
@@ -62,8 +62,8 @@ export const selectRacersByAllClasses = createSelector(
 
     // Single pass through racers
     racers.forEach(racer => {
-      if (racer.raceId === activeRaceId && result.hasOwnProperty(racer.classId)) {
-        result[racer.classId].push(racer);
+      if (racer.raceId === activeRaceId && result.hasOwnProperty(racer.raceClass)) {
+        result[racer.raceClass].push(racer);
       }
     });
 
@@ -96,7 +96,7 @@ export const selectRacersByActiveRaceClass = createSelector(
 
     raceClasses.forEach(raceClass => {
       result[raceClass.raceClass] = racers.filter(
-        racer => racer.classId === raceClass.raceClass && racer.raceId === activeRace.id
+        racer => racer.raceClass === raceClass.raceClass && racer.raceId === activeRace.id
       );
     });
     return result;
@@ -118,8 +118,8 @@ export const selectRacersByRaceId = createSelector(
 
     // Filter and group racers for this race by class
     racers.forEach(racer => {
-      if (racer.raceId === raceId && result.hasOwnProperty(racer.classId)) {
-        result[racer.classId].push(racer);
+      if (racer.raceId === raceId && result.hasOwnProperty(racer.raceClass)) {
+        result[racer.raceClass].push(racer);
       }
     });
 

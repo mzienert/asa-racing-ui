@@ -37,10 +37,10 @@ export const RacerContainer = ({
 
   const currentStatus = selectedRaceClass?.status || RaceClassStatus.CREATED;
 
-  const handleCompleteClass = (classId: string) => {
+  const handleCompleteClass = (raceClass: string) => {
     if (activeRace) {
       const updatedRaceClasses = activeRace.raceClasses.map(rc =>
-        rc.raceClass === classId ? { ...rc, status: RaceClassStatus.Seeding } : rc
+        rc.raceClass === raceClass ? { ...rc, status: RaceClassStatus.Seeding } : rc
       );
 
       dispatch(
@@ -49,7 +49,7 @@ export const RacerContainer = ({
           raceClasses: updatedRaceClasses,
         })
       );
-      toast.success(`${classId?.replace('-', ' ') || classId} is now ready for seeding`);
+      toast.success(`${raceClass?.replace('-', ' ') || raceClass} is now ready for seeding`);
     }
   };
 
@@ -77,7 +77,7 @@ export const RacerContainer = ({
 
           {currentStatus === RaceClassStatus.CREATED ? (
             <RacerForm
-              classId={raceClass.raceClass}
+              raceClass={raceClass.raceClass}
               raceId={selectedRaceId}
               onComplete={() => handleCompleteClass(raceClass.raceClass)}
               showComplete={!isEditing}
