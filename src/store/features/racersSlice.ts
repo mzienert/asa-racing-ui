@@ -35,7 +35,8 @@ const getRacersFromStorage = (): Racer[] => {
 
     const parsedData = JSON.parse(storedData);
     return Array.isArray(parsedData) ? parsedData : [];
-  } catch (e) {
+  } catch (e: unknown) {
+    console.error('Error getting racers from localStorage:', e);
     return [];
   }
 };

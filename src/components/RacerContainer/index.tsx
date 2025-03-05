@@ -72,7 +72,7 @@ export const RacerContainer = ({
             onEditingStateChange={(isEditing, racer) => handleEditingStateChange(isEditing, racer)}
           />
 
-          {currentStatus === RaceClassStatus.CREATED ? (
+          {currentStatus === RaceClassStatus.Created ? (
             <RacerForm
               raceClass={raceClass.raceClass}
               raceId={selectedRaceId}

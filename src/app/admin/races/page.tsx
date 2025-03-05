@@ -13,7 +13,7 @@ import {
 import { selectActiveRace, selectRaces } from '@/store/selectors/raceSelectors';
 import RaceManagementContainer from '@/components/RaceManagementContainer';
 import RaceListContainer from '@/components/RaceListContainer';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 

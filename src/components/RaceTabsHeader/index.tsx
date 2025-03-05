@@ -12,7 +12,7 @@ interface RaceTabsHeaderProps {
   onTabChange: (raceId: string) => void;
 }
 
-export const RaceTabsHeader = ({ filterStatus = false, selectedRaceId, onTabChange }: RaceTabsHeaderProps) => {
+export const RaceTabsHeader = ({ filterStatus = false, onTabChange }: RaceTabsHeaderProps) => {
   const allRaces = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
   const initialRaces = getActiveRaces(allRaces);

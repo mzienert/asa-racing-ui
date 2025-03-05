@@ -13,7 +13,6 @@ interface RacerListProps {
 export const RacerList = ({
   racers,
   raceClassStatus,
-  raceClass,
   onEditingStateChange,
 }: RacerListProps) => {
   const [editingRacer, setEditingRacer] = useState<Racer | null>(null);

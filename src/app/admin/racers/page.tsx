@@ -6,7 +6,7 @@ import {
   selectRacersByRaceId,
   selectRaceClassesByRaceId,
 } from '@/store/selectors/raceSelectors';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectHasActiveRace } from '@/store/selectors/raceSelectors';
 import { Card, CardContent } from '@/components/ui/card';
