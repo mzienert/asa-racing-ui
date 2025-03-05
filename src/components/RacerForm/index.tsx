@@ -57,7 +57,7 @@ const RacerForm = ({
   }, [editingRacer]);
 
   // If the race class is not in Configuring status, don't render the form
-  if (raceClassInfo?.status !== RaceClassStatus.CREATED) {
+  if (raceClassInfo?.status !== RaceClassStatus.Created) {
     return (
       <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
         <AlertCircle className="h-5 w-5" />

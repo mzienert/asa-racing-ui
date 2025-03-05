@@ -35,7 +35,7 @@ export const RacerContainer = ({
     selectRaceClassByRaceId(state, selectedRaceId, raceClass.raceClass)
   );
 
-  const currentStatus = selectedRaceClass?.status || RaceClassStatus.CREATED;
+  const currentStatus = selectedRaceClass?.status || RaceClassStatus.Created;
 
   const handleCompleteClass = (raceClass: string) => {
     if (activeRace) {

@@ -60,7 +60,7 @@ interface RaceClassStatusBadgeProps {
 export const RaceClassStatusBadge = ({ status, size = 'default' }: RaceClassStatusBadgeProps) => {
   const getStatusIcon = (status: RaceClassStatus) => {
     switch (status) {
-      case RaceClassStatus.CREATED:
+      case RaceClassStatus.Created:
         return <Settings className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />;
       case RaceClassStatus.Seeding:
         return <UserPlus className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} mr-2`} />;
@@ -75,7 +75,7 @@ export const RaceClassStatusBadge = ({ status, size = 'default' }: RaceClassStat
 
   const getStatusColor = (status: RaceClassStatus) => {
     switch (status) {
-      case RaceClassStatus.CREATED:
+      case RaceClassStatus.Created:
         return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-500/20';
       case RaceClassStatus.Seeding:
         return 'text-blue-600 bg-blue-100 dark:bg-blue-500/20';

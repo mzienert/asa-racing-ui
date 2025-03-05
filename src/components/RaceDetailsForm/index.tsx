@@ -110,7 +110,7 @@ const RaceDetailsForm = ({
 
   const handleRaceClassChange = (checked: boolean | string, className: string) => {
     const newClasses = checked
-      ? [...raceClasses, { raceClass: className, status: RaceClassStatus.CREATED }]
+      ? [...raceClasses, { raceClass: className, status: RaceClassStatus.Created }]
       : raceClasses.filter(c => c.raceClass !== className);
 
     setRaceClasses(newClasses);
