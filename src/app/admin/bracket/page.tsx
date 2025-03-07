@@ -35,9 +35,11 @@ import { cn } from '@/lib/utils';
 import { Trophy } from 'lucide-react';
 import { RaceStatus } from '@/store/features/bracketSlice';
 import { Circle, RefreshCw } from 'lucide-react';
+import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface BracketContentProps {
   race: Race;
+  selectedClass: string;
 }
 
 /* interface BracketMatch {
@@ -268,12 +270,38 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
   );
 };
 
-const BracketContent = ({ race }: BracketContentProps) => {
+// Add ClassTabsHeader component
+interface ClassTabsHeaderProps {
+  selectedClass?: string;
+  raceClasses: Array<{ raceClass: string }>;
+  onTabChange: (raceClass: string) => void;
+}
+
+const ClassTabsHeader = ({ selectedClass, raceClasses, onTabChange }: ClassTabsHeaderProps) => {
+  return (
+    <TabsList className="w-full justify-start">
+      {raceClasses.map(({ raceClass }) => (
+        <TabsTrigger
+          key={raceClass}
+          value={raceClass}
+          className="flex items-center gap-2"
+          onClick={() => onTabChange(raceClass)}
+        >
+          {raceClass}
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  );
+};
+
+const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const selectedRaceClasses = useSelector((state: RootState) =>
     selectRaceClassesByRaceId(state, race.id)
   );
-  const brackets = useSelector((state: RootState) => state.brackets.rounds);
+  const brackets = useSelector((state: RootState) => 
+    state.brackets[race.id]?.[selectedClass] || []
+  );
   const racersByClass = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
   const [raceWinners, setRaceWinners] = useState<Record<string, Record<string, string[]>>>({});
 
@@ -349,171 +377,161 @@ const BracketContent = ({ race }: BracketContentProps) => {
     );
   };
 
+  const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
+
+  if (!raceClass) {
+    return null;
+  }
+
+  // Filter brackets for the current class
+  const winnersBrackets = brackets.filter(b => b.bracketType === 'winners');
+  const losersBrackets = brackets.filter(b => b.bracketType === 'losers');
+  const finalBrackets = brackets.filter(b => b.bracketType === 'final');
+
   return (
-    <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
-      {selectedRaceClasses.map(raceClass => {
-        const classBrackets = brackets.filter(
-          b => b.raceId === race.id && b.raceClass === raceClass.raceClass
-        );
-
-        // Separate winners, losers, and finals brackets
-        const winnersBrackets = classBrackets.filter(b => b.bracketType === 'winners');
-        const losersBrackets = classBrackets.filter(b => b.bracketType === 'losers');
-        const finalBrackets = classBrackets.filter(b => b.bracketType === 'final');
-
-        console.log('Debug - Brackets:', {
-          winners: winnersBrackets.length,
-          losers: losersBrackets.length,
-          finals: finalBrackets.length,
-        });
-
-        return (
-          <Card key={raceClass.raceClass} className="p-4">
-            <h3 className="text-lg font-semibold mb-4">{raceClass.raceClass}</h3>
-            <div className="bracket-container overflow-x-auto">
-              <div className="flex flex-col gap-8">
-                {winnersBrackets.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-4">Winners Bracket</h4>
-                    <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
-                      {winnersBrackets.map(round => (
-                        <div
-                          key={`${round.roundNumber}-${round.bracketType}`}
-                          className="bracket-round flex-1"
-                        >
-                          <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
-                          <div className="relative">
-                            {round.races.map(bracketRace => (
-                              <BracketRace
-                                key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                                race={bracketRace}
-                                onWinnerSelect={(raceNumber, winners, losers) =>
-                                  handleWinnerSelect(
-                                    raceClass.raceClass,
-                                    raceNumber,
-                                    round.roundNumber,
-                                    round.bracketType,
-                                    winners,
-                                    losers
-                                  )
-                                }
-                                winners={getWinnersForRace(
-                                  raceClass.raceClass,
-                                  bracketRace.raceNumber,
-                                  round.roundNumber,
-                                  round.bracketType,
-                                  bracketRace.status
-                                )}
-                                onFinalRankings={rankings =>
-                                  handleFinalRankings(raceClass.raceClass, rankings)
-                                }
-                              />
-                            ))}
-                          </div>
-                        </div>
+    <Card className="p-4">
+      <h3 className="text-lg font-semibold mb-4">{raceClass.raceClass}</h3>
+      <div className="bracket-container overflow-x-auto">
+        <div className="flex flex-col gap-8">
+          {winnersBrackets.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-4">Winners Bracket</h4>
+              <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
+                {winnersBrackets.map(round => (
+                  <div
+                    key={`${round.roundNumber}-${round.bracketType}`}
+                    className="bracket-round flex-1"
+                  >
+                    <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
+                    <div className="relative">
+                      {round.races.map(bracketRace => (
+                        <BracketRace
+                          key={`${bracketRace.raceNumber}-${round.bracketType}`}
+                          race={bracketRace}
+                          onWinnerSelect={(raceNumber, winners, losers) =>
+                            handleWinnerSelect(
+                              raceClass.raceClass,
+                              raceNumber,
+                              round.roundNumber,
+                              round.bracketType,
+                              winners,
+                              losers
+                            )
+                          }
+                          winners={getWinnersForRace(
+                            raceClass.raceClass,
+                            bracketRace.raceNumber,
+                            round.roundNumber,
+                            round.bracketType,
+                            bracketRace.status
+                          )}
+                          onFinalRankings={rankings =>
+                            handleFinalRankings(raceClass.raceClass, rankings)
+                          }
+                        />
                       ))}
                     </div>
                   </div>
-                )}
-
-                {losersBrackets.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-4">Second Chance</h4>
-                    <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
-                      {losersBrackets.map(round => (
-                        <div
-                          key={`${round.roundNumber}-${round.bracketType}`}
-                          className="bracket-round flex-1"
-                        >
-                          <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
-                          <div className="relative">
-                            {round.races.map(bracketRace => (
-                              <BracketRace
-                                key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                                race={{
-                                  ...bracketRace,
-                                  bracketType:
-                                    bracketRace.bracketType === 'losers'
-                                      ? ('second chance' as BracketRace['bracketType'])
-                                      : bracketRace.bracketType,
-                                }}
-                                onWinnerSelect={(raceNumber, winners, losers) =>
-                                  handleWinnerSelect(
-                                    raceClass.raceClass,
-                                    raceNumber,
-                                    round.roundNumber,
-                                    round.bracketType,
-                                    winners,
-                                    losers
-                                  )
-                                }
-                                winners={getWinnersForRace(
-                                  raceClass.raceClass,
-                                  bracketRace.raceNumber,
-                                  round.roundNumber,
-                                  round.bracketType,
-                                  bracketRace.status
-                                )}
-                                onFinalRankings={rankings =>
-                                  handleFinalRankings(raceClass.raceClass, rankings)
-                                }
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {finalBrackets[0]?.races.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-4">Finals</h4>
-                    <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
-                      {finalBrackets.map(round => (
-                        <div
-                          key={`${round.roundNumber}-${round.bracketType}`}
-                          className="bracket-round flex-1"
-                        >
-                          <div className="relative">
-                            {round.races.map(bracketRace => (
-                              <BracketRace
-                                key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                                race={bracketRace}
-                                onWinnerSelect={(raceNumber, winners, losers) =>
-                                  handleWinnerSelect(
-                                    raceClass.raceClass,
-                                    raceNumber,
-                                    round.roundNumber,
-                                    round.bracketType,
-                                    winners,
-                                    losers
-                                  )
-                                }
-                                winners={getWinnersForRace(
-                                  raceClass.raceClass,
-                                  bracketRace.raceNumber,
-                                  round.roundNumber,
-                                  round.bracketType,
-                                  bracketRace.status
-                                )}
-                                onFinalRankings={rankings =>
-                                  handleFinalRankings(raceClass.raceClass, rankings)
-                                }
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
-          </Card>
-        );
-      })}
-    </TabsContent>
+          )}
+
+          {losersBrackets.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-4">Second Chance</h4>
+              <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
+                {losersBrackets.map(round => (
+                  <div
+                    key={`${round.roundNumber}-${round.bracketType}`}
+                    className="bracket-round flex-1"
+                  >
+                    <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
+                    <div className="relative">
+                      {round.races.map(bracketRace => (
+                        <BracketRace
+                          key={`${bracketRace.raceNumber}-${round.bracketType}`}
+                          race={{
+                            ...bracketRace,
+                            bracketType:
+                              bracketRace.bracketType === 'losers'
+                                ? ('second chance' as BracketRace['bracketType'])
+                                : bracketRace.bracketType,
+                          }}
+                          onWinnerSelect={(raceNumber, winners, losers) =>
+                            handleWinnerSelect(
+                              raceClass.raceClass,
+                              raceNumber,
+                              round.roundNumber,
+                              round.bracketType,
+                              winners,
+                              losers
+                            )
+                          }
+                          winners={getWinnersForRace(
+                            raceClass.raceClass,
+                            bracketRace.raceNumber,
+                            round.roundNumber,
+                            round.bracketType,
+                            bracketRace.status
+                          )}
+                          onFinalRankings={rankings =>
+                            handleFinalRankings(raceClass.raceClass, rankings)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {finalBrackets[0]?.races.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium mb-4">Finals</h4>
+              <div className="bracket-rounds flex gap-16 min-w-[800px] relative">
+                {finalBrackets.map(round => (
+                  <div
+                    key={`${round.roundNumber}-${round.bracketType}`}
+                    className="bracket-round flex-1"
+                  >
+                    <div className="relative">
+                      {round.races.map(bracketRace => (
+                        <BracketRace
+                          key={`${bracketRace.raceNumber}-${round.bracketType}`}
+                          race={bracketRace}
+                          onWinnerSelect={(raceNumber, winners, losers) =>
+                            handleWinnerSelect(
+                              raceClass.raceClass,
+                              raceNumber,
+                              round.roundNumber,
+                              round.bracketType,
+                              winners,
+                              losers
+                            )
+                          }
+                          winners={getWinnersForRace(
+                            raceClass.raceClass,
+                            bracketRace.raceNumber,
+                            round.roundNumber,
+                            round.bracketType,
+                            bracketRace.status
+                          )}
+                          onFinalRankings={rankings =>
+                            handleFinalRankings(raceClass.raceClass, rankings)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 };
 
@@ -524,6 +542,9 @@ const Bracket = () => {
   const activeRace = useSelector(selectActiveRace);
   const activeRaces = getActiveRaces(races);
   const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
+  const [selectedClass, setSelectedClass] = useState<string>(
+    activeRace?.raceClasses[0]?.raceClass || ''
+  );
 
   useEffect(() => {
     dispatch(loadRacesFromStorage());
@@ -540,6 +561,10 @@ const Bracket = () => {
   useEffect(() => {
     if (activeRace?.id && activeRace.id !== selectedRaceId) {
       setSelectedRaceId(activeRace.id);
+      // Set the first race class as selected by default
+      if (activeRace.raceClasses.length > 0) {
+        setSelectedClass(activeRace.raceClasses[0].raceClass);
+      }
     }
   }, [activeRace?.id, selectedRaceId]);
 
@@ -579,10 +604,18 @@ const Bracket = () => {
               </Button>
             </div>
             <CardContent>
-              <Tabs value={selectedRaceId} className="w-full">
-                <RaceTabsHeader selectedRaceId={selectedRaceId} onTabChange={setSelectedRaceId} />
-                {activeRaces.map(race => (
-                  <BracketContent key={race.id} race={race} />
+              <Tabs value={selectedClass} className="w-full">
+                {activeRace && (
+                  <ClassTabsHeader
+                    selectedClass={selectedClass}
+                    raceClasses={activeRace.raceClasses}
+                    onTabChange={setSelectedClass}
+                  />
+                )}
+                {activeRace && activeRace.raceClasses.map(raceClass => (
+                  <TabsContent key={raceClass.raceClass} value={raceClass.raceClass} className="mt-4 space-y-6">
+                    <BracketContent race={activeRace} selectedClass={raceClass.raceClass} />
+                  </TabsContent>
                 ))}
               </Tabs>
             </CardContent>

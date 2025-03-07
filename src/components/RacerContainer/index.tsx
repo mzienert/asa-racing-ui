@@ -63,7 +63,6 @@ export const RacerContainer = ({
       {showDivider && <div className="h-px bg-border my-6" />}
       <div className="space-y-4">
         <RaceClassHeader raceClassName={raceClass.raceClass} status={currentStatus} />
-
         <div className="space-y-4">
           {currentStatus !== RaceClassStatus.Created && (
             <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
