@@ -65,14 +65,22 @@ export const RacerContainer = ({
         <RaceClassHeader raceClassName={raceClass.raceClass} status={currentStatus} />
 
         <div className="space-y-4">
+          {currentStatus !== RaceClassStatus.Created && (
+            <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
+              <AlertCircle className="h-5 w-5" />
+              <p>
+                Racers for this class are now locked. This race class is in{' '}
+                {currentStatus.toLowerCase()} status.
+              </p>
+            </div>
+          )}
           <RacerList
             racers={racersByClass[raceClass.raceClass] || []}
             raceClassStatus={currentStatus}
             raceClass={raceClass.raceClass}
             onEditingStateChange={(isEditing, racer) => handleEditingStateChange(isEditing, racer)}
           />
-
-          {currentStatus === RaceClassStatus.Created ? (
+          {currentStatus === RaceClassStatus.Created && (
             <RacerForm
               raceClass={raceClass.raceClass}
               raceId={selectedRaceId}
@@ -81,14 +89,6 @@ export const RacerContainer = ({
               editingRacer={editingRacer}
               onEditComplete={() => handleEditingStateChange(false)}
             />
-          ) : (
-            <div className="flex items-center gap-2 p-4 text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 rounded-md">
-              <AlertCircle className="h-5 w-5" />
-              <p>
-                Racers for this class are now locked. This race class is in{' '}
-                {currentStatus.toLowerCase()} status.
-              </p>
-            </div>
           )}
         </div>
       </div>
