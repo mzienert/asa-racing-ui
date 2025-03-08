@@ -279,12 +279,12 @@ interface ClassTabsHeaderProps {
 
 const ClassTabsHeader = ({ selectedClass, raceClasses, onTabChange }: ClassTabsHeaderProps) => {
   return (
-    <TabsList className="w-full justify-start">
+    <TabsList className="w-full justify-start border-b border-b-[1px] border-input">
       {raceClasses.map(({ raceClass }) => (
         <TabsTrigger
           key={raceClass}
           value={raceClass}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 rounded-none rounded-t-lg"
           onClick={() => onTabChange(raceClass)}
         >
           {raceClass}
@@ -596,13 +596,11 @@ const Bracket = () => {
       <div className="space-y-6">
         <Card className="shadow-md">
           <div className="flex flex-col">
-            <div className="flex items-center justify-between p-6 pb-2">
-              <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
-              <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
+            <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
+             {/*  <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
                 <RefreshCw className="h-4 w-4" />
                 Reset All Brackets
-              </Button>
-            </div>
+              </Button> */}
             <CardContent>
               <Tabs value={selectedClass} className="w-full">
                 {activeRace && (
