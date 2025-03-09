@@ -21,6 +21,9 @@ export interface BracketRace {
     third?: string;
     fourth?: string;
   };
+  disqualifiedRacers?: string[]; // IDs of disqualified racers
+  raceId: string; // ID of the parent race
+  raceClass: string; // Class of the race
 }
 
 interface BracketRound {
@@ -101,6 +104,8 @@ const groupIntoRaces = (racers: Racer[]): BracketRace[] => {
         round: 1,
         status: 'pending',
         position: Math.floor(i / 4),
+        raceId: '',
+        raceClass: '',
       });
     }
   }
@@ -128,6 +133,8 @@ const generateFullBracketStructure = (
     round: 1,
     nextWinnerRace: Math.floor(idx / 2) + 1, // Next winners race number
     nextLoserRace: idx <= 1 ? 5 : 7, // Point to Race 5 or 7 in Second Chance
+    raceId,
+    raceClass,
   }));
 
   rounds.push({
@@ -219,6 +226,8 @@ const createNextRoundRace = (
   bracketType,
   status: 'pending',
   position,
+  raceId: '',
+  raceClass: '',
 });
 
 // Helper to populate next round races
@@ -242,6 +251,19 @@ const populateNextRoundRaces = (
     losers
   });
 
+  // Get current race to check for disqualified racers
+  const currentRace = rounds
+    .find(r => r.roundNumber === currentRound && r.bracketType === bracketType)
+    ?.races.find(r => r.raceNumber === raceNumber);
+
+  // Filter out disqualified racers from winners and losers
+  const validWinners = winners.filter(
+    id => !currentRace?.disqualifiedRacers?.includes(id)
+  );
+  const validLosers = losers.filter(
+    id => !currentRace?.disqualifiedRacers?.includes(id)
+  );
+
   if (bracketType === 'winners') {
     // Handle winners bracket progression
     const nextRoundNumber = currentRound + 1;
@@ -259,7 +281,7 @@ const populateNextRoundRaces = (
 
       if (existingRace) {
         // Check for duplicates before adding winners
-        const newWinners = winners.filter(
+        const newWinners = validWinners.filter(
           winnerId => !existingRace.racers.some(r => r.id === winnerId)
         );
         if (newWinners.length > 0) {
@@ -272,7 +294,7 @@ const populateNextRoundRaces = (
           Math.floor((raceNumber - 1) / 2),
           'winners'
         );
-        newRace.racers = getRacersByIds(racers, winners);
+        newRace.racers = getRacersByIds(racers, validWinners);
         updatedRounds[nextRoundIndex].races.push(newRace);
       }
     }
@@ -304,7 +326,7 @@ const populateNextRoundRaces = (
         }
 
         // Add losers to the race
-        const newLosers = losers.filter(
+        const newLosers = validLosers.filter(
           loserId => !targetRace.racers.some(r => r.id === loserId)
         );
         if (newLosers.length > 0) {
@@ -315,7 +337,7 @@ const populateNextRoundRaces = (
 
     // Check if Winners bracket Round 2 is complete and create finals if Second Chance is ready
     if (currentRound === 2) {
-      const winnersChampions = winners; // This will be two winners from Round 2
+      const winnersChampions = validWinners; // This will be two winners from Round 2
       
       // Check if Second Chance Round 2 (Race 6) is complete
       const secondChanceRound2 = rounds.find(
@@ -376,7 +398,7 @@ const populateNextRoundRaces = (
 
     // Check if this is Race 6 completion and Winners bracket Round 2 is complete
     if (currentRound === 2 && raceNumber === 6) {
-      const race6Winner = winners[0];
+      const race6Winner = validWinners[0];
       
       // Check if Winners bracket Round 2 is complete
       const winnersRound2 = rounds.find(
@@ -457,6 +479,37 @@ export const updateFinalRankings = createAsyncThunk(
       raceId,
       raceClass,
       rankings,
+    };
+  }
+);
+
+export const disqualifyRacer = createAsyncThunk(
+  'bracket/disqualifyRacer',
+  async ({
+    raceId,
+    raceClass,
+    raceNumber,
+    round,
+    bracketType,
+    racerId,
+    racers,
+  }: {
+    raceId: string;
+    raceClass: string;
+    raceNumber: number;
+    round: number;
+    bracketType: 'winners' | 'losers' | 'final';
+    racerId: string;
+    racers: Racer[];
+  }) => {
+    return {
+      raceId,
+      raceClass,
+      raceNumber,
+      round,
+      bracketType,
+      racerId,
+      racers,
     };
   }
 );
@@ -552,6 +605,58 @@ const bracketSlice = createSlice({
             };
           }
           return round;
+        });
+
+        localStorage.setItem('brackets', JSON.stringify(state));
+      })
+      .addCase(disqualifyRacer.fulfilled, (state, action) => {
+        const { raceId, raceClass, raceNumber, round, bracketType, racerId } = action.payload;
+
+        if (!state[raceId]?.[raceClass]) return;
+
+        // Find and update the race
+        state[raceId][raceClass] = state[raceId][raceClass].map(bracketRound => {
+          if (bracketRound.roundNumber === round && bracketRound.bracketType === bracketType) {
+            return {
+              ...bracketRound,
+              races: bracketRound.races.map(race => {
+                if (race.raceNumber === raceNumber) {
+                  // Add racer to disqualified list
+                  const disqualifiedRacers = [...(race.disqualifiedRacers || []), racerId];
+                  
+                  // Remove from winners/losers if present
+                  const winners = race.winners?.filter(id => id !== racerId) || [];
+                  const losers = race.losers?.filter(id => id !== racerId) || [];
+                  
+                  // If this is the final race, update rankings
+                  if (race.finalRankings) {
+                    const rankings = { ...race.finalRankings };
+                    Object.entries(rankings).forEach(([position, id]) => {
+                      if (id === racerId) {
+                        delete rankings[position as keyof typeof rankings];
+                      }
+                    });
+                    return {
+                      ...race,
+                      disqualifiedRacers,
+                      winners,
+                      losers,
+                      finalRankings: rankings
+                    };
+                  }
+                  
+                  return {
+                    ...race,
+                    disqualifiedRacers,
+                    winners,
+                    losers
+                  };
+                }
+                return race;
+              }),
+            };
+          }
+          return bracketRound;
         });
 
         localStorage.setItem('brackets', JSON.stringify(state));

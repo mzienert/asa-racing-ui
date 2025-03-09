@@ -8,6 +8,7 @@ import {
   updateRaceResults,
   resetBrackets,
   updateFinalRankings,
+  disqualifyRacer,
 } from '@/store/features/bracketSlice';
 import {
   loadRacesFromStorage,
@@ -22,7 +23,7 @@ import {
   selectRaces,
 } from '@/store/selectors/raceSelectors';
 import { AppDispatch } from '@/store/store';
-import { Users } from 'lucide-react';
+import { Users, Trophy, Ban } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import RaceTabsHeader from '@/components/RaceTabsHeader';
@@ -32,7 +33,6 @@ import type { Race } from '@/store/features/racesSlice';
 import type { BracketRace } from '@/store/features/bracketSlice';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Trophy } from 'lucide-react';
 import { RaceStatus } from '@/store/features/bracketSlice';
 import { Circle, RefreshCw } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -85,6 +85,61 @@ const RaceStatusIndicator = ({ status }: { status: RaceStatus }) => {
 const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: BracketRaceProps) => {
   const [selectedRacers, setSelectedRacers] = useState<string[]>(winners || []);
   const [rankings, setRankings] = useState<Record<string, number>>({});
+  const dispatch = useDispatch<AppDispatch>();
+
+  const handleDisqualify = (racerId: string) => {
+    if (window.confirm('Are you sure you want to disqualify this racer? This action cannot be undone.')) {
+      // Remove from selected racers if present
+      setSelectedRacers(prev => prev.filter(id => id !== racerId));
+
+      // Remove from rankings if present
+      if (race.bracketType === 'final') {
+        setRankings(prev => {
+          const newRankings = { ...prev };
+          delete newRankings[racerId];
+          return newRankings;
+        });
+      }
+
+      // Dispatch disqualification action
+      dispatch(
+        disqualifyRacer({
+          raceId: race.raceId,
+          raceClass: race.raceClass,
+          raceNumber: race.raceNumber,
+          round: race.round,
+          bracketType: race.bracketType,
+          racerId,
+          racers: race.racers
+        })
+      ).then(() => {
+        // After disqualification, update winners/losers if needed
+        if (race.status === 'completed') {
+          const remainingRacers = race.racers
+            .filter(r => r.id !== racerId)
+            .map(r => r.id);
+          
+          if (race.bracketType === 'final') {
+            // For finals, recalculate rankings
+            const validRankings = { ...race.finalRankings };
+            Object.entries(validRankings).forEach(([position, id]) => {
+              if (id === racerId) {
+                delete validRankings[position as keyof typeof validRankings];
+              }
+            });
+            if (onFinalRankings && Object.keys(validRankings).length === 4) {
+              onFinalRankings(validRankings as any);
+            }
+          } else {
+            // For other races, update winners/losers
+            const validWinners = winners.filter(id => id !== racerId);
+            const validLosers = remainingRacers.filter(id => !validWinners.includes(id));
+            onWinnerSelect(race.raceNumber, validWinners, validLosers);
+          }
+        }
+      });
+    }
+  };
 
   const handleRacerSelect = (racerId: string) => {
     if (race.bracketType === 'final') {
@@ -247,56 +302,64 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
         <span className="text-xs text-muted-foreground capitalize">{race.bracketType}</span>
       </div>
       <div className="match-pair space-y-2">
-        {race.racers.map(racer => (
-          <Button
-            key={racer.id}
-            variant={isSelected(racer.id) ? 'default' : 'ghost'}
-            disabled={race.status === 'completed'}
-            className={cn(
-              'w-full justify-between h-auto py-2 px-3',
-              isSelected(racer.id) && 'bg-green-500/10 text-green-600',
-              !isSelected(racer.id) &&
-                (race.bracketType === 'final'
-                  ? Object.keys(rankings).length === 4
-                  : selectedRacers.length === 2) &&
-                'opacity-50'
-            )}
-            onClick={() => {
-              if (race.status !== 'completed') {
-                handleRacerSelect(racer.id);
-                if (
-                  race.bracketType !== 'final' &&
-                  selectedRacers.length === 1 &&
-                  !selectedRacers.includes(racer.id)
-                ) {
-                  const winners = [...selectedRacers, racer.id];
-                  const losers = race.racers.filter(r => !winners.includes(r.id)).map(r => r.id);
-                  onWinnerSelect(race.raceNumber, winners, losers);
-                }
-              }
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm">{racer.name}</span>
-              {racer.seedData?.startingPosition && (
-                <span className="text-xs text-muted-foreground">
-                  (#{racer.seedData.startingPosition})
-                </span>
-              )}
-              {race.bracketType === 'final' && rankings[racer.id] && (
-                <span className="text-xs font-medium text-green-600">
-                  {getRacerPosition(racer.id)}
-                </span>
+        {race.racers.map(racer => {
+          const isDisqualified = race.disqualifiedRacers?.includes(racer.id);
+          
+          return (
+            <div key={racer.id} className="flex gap-2">
+              <Button
+                variant={isSelected(racer.id) ? 'default' : 'ghost'}
+                disabled={race.status === 'completed' || isDisqualified}
+                className={cn(
+                  'flex-1 justify-between h-auto py-2 px-3',
+                  isSelected(racer.id) && 'bg-green-500/10 text-green-600',
+                  !isSelected(racer.id) &&
+                    (race.bracketType === 'final'
+                      ? Object.keys(rankings).length === 4
+                      : selectedRacers.length === 2) &&
+                    'opacity-50',
+                  isDisqualified && 'bg-red-500/10 text-red-600 line-through'
+                )}
+                onClick={() => {
+                  if (!isDisqualified) {
+                    handleRacerSelect(racer.id);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{racer.name}</span>
+                  {racer.seedData?.startingPosition && (
+                    <span className="text-xs text-muted-foreground">
+                      (#{racer.seedData.startingPosition})
+                    </span>
+                  )}
+                  {race.bracketType === 'final' && rankings[racer.id] && (
+                    <span className="text-xs font-medium text-green-600">
+                      {getRacerPosition(racer.id)}
+                    </span>
+                  )}
+                </div>
+                {isSelected(racer.id) && race.bracketType !== 'final' && (
+                  <Trophy className="h-4 w-4 text-green-600" />
+                )}
+                {race.bracketType === 'final' && rankings[racer.id] && (
+                  <span className="text-sm font-medium text-green-600">#{rankings[racer.id]}</span>
+                )}
+              </Button>
+              
+              {!isDisqualified && race.status !== 'completed' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-auto aspect-square text-red-600 hover:text-red-700 hover:bg-red-100"
+                  onClick={() => handleDisqualify(racer.id)}
+                >
+                  <Ban className="h-4 w-4" />
+                </Button>
               )}
             </div>
-            {isSelected(racer.id) && race.bracketType !== 'final' && (
-              <Trophy className="h-4 w-4 text-green-600" />
-            )}
-            {race.bracketType === 'final' && rankings[racer.id] && (
-              <span className="text-sm font-medium text-green-600">#{rankings[racer.id]}</span>
-            )}
-          </Button>
-        ))}
+          );
+        })}
       </div>
       {race.nextWinnerRace && (
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-px bg-gray-300" />
@@ -465,7 +528,11 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                     {round.races.map(bracketRace => (
                       <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
                         <BracketRace
-                          race={bracketRace}
+                          race={{
+                            ...bracketRace,
+                            raceId: race.id,
+                            raceClass: raceClass.raceClass
+                          }}
                           onWinnerSelect={(raceNumber, winners, losers) =>
                             handleWinnerSelect(
                               raceClass.raceClass,
@@ -516,7 +583,11 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                     {round.races.map(bracketRace => (
                       <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
                         <BracketRace
-                          race={bracketRace}
+                          race={{
+                            ...bracketRace,
+                            raceId: race.id,
+                            raceClass: raceClass.raceClass
+                          }}
                           onWinnerSelect={(raceNumber, winners, losers) =>
                             handleWinnerSelect(
                               raceClass.raceClass,
@@ -565,7 +636,11 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                       {round.races.map(bracketRace => (
                         <BracketRace
                           key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                          race={bracketRace}
+                          race={{
+                            ...bracketRace,
+                            raceId: race.id,
+                            raceClass: raceClass.raceClass
+                          }}
                           onWinnerSelect={(raceNumber, winners, losers) =>
                             handleWinnerSelect(
                               raceClass.raceClass,
