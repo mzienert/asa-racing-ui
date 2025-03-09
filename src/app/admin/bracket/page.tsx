@@ -300,10 +300,36 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     selectRaceClassesByRaceId(state, race.id)
   );
   const brackets = useSelector((state: RootState) => 
-    state.brackets[race.id]?.[selectedClass] || []
+    state[race.id]?.[selectedClass] || []
   );
   const racersByClass = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
   const [raceWinners, setRaceWinners] = useState<Record<string, Record<string, string[]>>>({});
+
+  const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
+
+  if (!raceClass) {
+    return null;
+  }
+
+  // Show message when brackets haven't been formed yet
+  if (!brackets || brackets.length === 0) {
+    return (
+      <Card className="p-8">
+        <div className="flex flex-col items-center justify-center text-center space-y-4">
+          <Users className="h-12 w-12 text-muted-foreground" />
+          <h3 className="text-lg font-semibold">{raceClass.raceClass} Brackets Not Ready</h3>
+          <p className="text-muted-foreground">
+            Complete seeding for this class to generate the brackets.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  // Filter brackets for the current class
+  const winnersBrackets = brackets.filter(b => b.bracketType === 'winners');
+  const losersBrackets = brackets.filter(b => b.bracketType === 'losers');
+  const finalBrackets = brackets.filter(b => b.bracketType === 'final');
 
   const handleWinnerSelect = (
     raceClass: string,
@@ -376,17 +402,6 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
       })
     );
   };
-
-  const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
-
-  if (!raceClass) {
-    return null;
-  }
-
-  // Filter brackets for the current class
-  const winnersBrackets = brackets.filter(b => b.bracketType === 'winners');
-  const losersBrackets = brackets.filter(b => b.bracketType === 'losers');
-  const finalBrackets = brackets.filter(b => b.bracketType === 'final');
 
   return (
     <Card className="p-4">
@@ -597,10 +612,10 @@ const Bracket = () => {
         <Card className="shadow-md">
           <div className="flex flex-col">
             <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
-             {/*  <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
+             <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
                 <RefreshCw className="h-4 w-4" />
                 Reset All Brackets
-              </Button> */}
+              </Button>
             <CardContent>
               <Tabs value={selectedClass} className="w-full">
                 {activeRace && (
