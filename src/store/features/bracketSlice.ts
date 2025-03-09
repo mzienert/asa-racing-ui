@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { Racer } from './racersSlice';
-import { RootState } from '../../store';
+import { RootState } from '../store';
 
 export type RaceStatus = 'pending' | 'in_progress' | 'completed';
 
