@@ -58,7 +58,9 @@ const Racers = () => {
     // Load both races and racers
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
+  }, [dispatch]);
 
+  useEffect(() => {
     // If we have races but no active race, set the first race as active
     if (races.length > 0 && !hasRace) {
       dispatch(setCurrentRace(races[0].id));

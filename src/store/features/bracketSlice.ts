@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { Racer } from './racersSlice';
 import { RootState } from '../../store';
 
@@ -36,12 +36,17 @@ interface BracketRound {
 }
 
 interface BracketState {
-  [raceId: string]: Record<string, BracketRound[]>;  // raceId -> raceClass -> rounds
-  loading?: boolean;
-  error?: string | null;
+  entities: {
+    [raceId: string]: {
+      [raceClass: string]: BracketRound[];
+    };
+  };
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: BracketState = {
+  entities: {},
   loading: false,
   error: null,
 };
@@ -49,10 +54,40 @@ const initialState: BracketState = {
 const getBracketsFromStorage = (): BracketState => {
   try {
     const stored = localStorage.getItem('brackets');
-    return stored ? JSON.parse(stored) : {};
+    if (!stored) return initialState;
+    
+    const data = JSON.parse(stored);
+    
+    // Handle old format where data was directly stored
+    if (data && typeof data === 'object' && !data.entities) {
+      const oldData = { ...data };
+      // Remove metadata fields if they exist
+      delete oldData.loading;
+      delete oldData.error;
+      // Only include if there's actual bracket data
+      if (Object.keys(oldData).length > 0) {
+        return {
+          entities: oldData,
+          loading: false,
+          error: null
+        };
+      }
+      return initialState;
+    }
+
+    // Handle new format
+    if (data.entities && Object.keys(data.entities).length > 0) {
+      return {
+        entities: data.entities,
+        loading: false,
+        error: null
+      };
+    }
+    
+    return initialState;
   } catch (e) {
     console.error('Error parsing brackets from localStorage:', e);
-    return {};
+    return initialState;
   }
 };
 
@@ -113,11 +148,6 @@ const groupIntoRaces = (racers: Racer[]): BracketRace[] => {
   return races;
 };
 
-// Calculate total number of rounds needed for N racers
-const calculateTotalRounds = (racerCount: number): number => {
-  return Math.ceil(Math.log(racerCount) / Math.log(4));
-};
-
 // Generate initial bracket structure including winners and losers brackets
 const generateFullBracketStructure = (
   racers: Racer[],
@@ -132,7 +162,7 @@ const generateFullBracketStructure = (
     bracketType: 'winners' as const,
     round: 1,
     nextWinnerRace: Math.floor(idx / 2) + 1, // Next winners race number
-    nextLoserRace: idx <= 1 ? 5 : 7, // Point to Race 5 or 7 in Second Chance
+    nextLoserRace: idx === 0 ? 5 : 7, // Race 1 losers go to Race 5, Race 2 losers go to Race 7
     raceId,
     raceClass,
   }));
@@ -185,21 +215,21 @@ const generateFullBracketStructure = (
   return rounds;
 };
 
+// Replace the selector with a memoized version
+const selectBracketsState = (state: RootState) => state.brackets;
+const selectRaceId = (_state: RootState, raceId: string) => raceId;
+const selectRaceClass = (_state: RootState, _raceId: string, raceClass: string) => raceClass;
+
+export const selectBracketsByRaceAndClass = createSelector(
+  [selectBracketsState, selectRaceId, selectRaceClass],
+  (bracketsState, raceId, raceClass) => bracketsState.entities[raceId]?.[raceClass] || []
+);
+
+// Update the createBracket thunk
 export const createBracket = createAsyncThunk(
   'bracket/create',
   async ({ racers, raceId, raceClass }: { racers: Racer[]; raceId: string; raceClass: string }) => {
-    const existingBrackets = getBracketsFromStorage();
     const bracketStructure = generateFullBracketStructure(racers, raceId, raceClass);
-    
-    const updatedBrackets = {
-      ...existingBrackets,
-      [raceId]: {
-        ...(existingBrackets[raceId] || {}),
-        [raceClass]: bracketStructure
-      }
-    };
-    
-    localStorage.setItem('brackets', JSON.stringify(updatedBrackets));
     return {
       raceId,
       raceClass,
@@ -362,9 +392,6 @@ const populateNextRoundRaces = (
     }
   } else if (bracketType === 'losers') {
     // Handle Second Chance progression
-    const nextRoundNumber = currentRound + 1;
-    
-    // Get all completed races from current round
     const currentRoundRaces = rounds.find(
       r => r.roundNumber === currentRound && r.bracketType === 'losers'
     )?.races || [];
@@ -519,48 +546,52 @@ const bracketSlice = createSlice({
   initialState,
   reducers: {
     resetBrackets: state => {
-      const { loading, error } = state;
-      Object.keys(state).forEach(key => {
-        if (key !== 'loading' && key !== 'error') {
-          delete state[key];
-        }
-      });
-      state.loading = loading;
-      state.error = error;
+      state.entities = {};
       localStorage.removeItem('brackets');
     },
   },
   extraReducers: builder => {
     builder
       .addCase(loadBracketsFromStorage.fulfilled, (state, action) => {
-        const { loading, error } = state;
-        Object.assign(state, action.payload);
+        console.log('Loading brackets from storage:', action.payload);
+        state.entities = action.payload.entities;
         state.loading = false;
         state.error = null;
       })
       .addCase(createBracket.fulfilled, (state, action) => {
         const { raceId, raceClass, rounds } = action.payload;
-        if (!state[raceId]) {
-          state[raceId] = {};
+        if (!state.entities) {
+          state.entities = {};
         }
-        state[raceId][raceClass] = rounds;
+        if (!state.entities[raceId]) {
+          state.entities[raceId] = {};
+        }
+        state.entities[raceId][raceClass] = rounds;
         state.loading = false;
+        
+        // Save the entire state to localStorage
+        const stateToSave = {
+          entities: state.entities,
+          loading: false,
+          error: null
+        };
+        localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
       .addCase(updateRaceResults.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, winners, losers, racers } =
           action.payload;
 
-        if (!state[raceId]?.[raceClass]) return;
+        if (!state.entities[raceId]?.[raceClass]) return;
 
         // Update current race results
-        let updatedRounds = state[raceId][raceClass].map(bracketRound => {
+        let updatedRounds = state.entities[raceId][raceClass].map((bracketRound: BracketRound) => {
           if (
             bracketRound.roundNumber === round &&
             bracketRound.bracketType === bracketType
           ) {
             return {
               ...bracketRound,
-              races: bracketRound.races.map(race =>
+              races: bracketRound.races.map((race: BracketRace) =>
                 race.raceNumber === raceNumber
                   ? { ...race, winners, losers, status: 'completed' as const }
                   : race
@@ -583,19 +614,19 @@ const bracketSlice = createSlice({
           bracketType
         );
 
-        state[raceId][raceClass] = updatedRounds;
+        state.entities[raceId][raceClass] = updatedRounds;
         localStorage.setItem('brackets', JSON.stringify(state));
       })
       .addCase(updateFinalRankings.fulfilled, (state, action) => {
         const { raceId, raceClass, rankings } = action.payload;
 
-        if (!state[raceId]?.[raceClass]) return;
+        if (!state.entities[raceId]?.[raceClass]) return;
 
-        state[raceId][raceClass] = state[raceId][raceClass].map(round => {
+        state.entities[raceId][raceClass] = state.entities[raceId][raceClass].map((round: BracketRound) => {
           if (round.bracketType === 'final') {
             return {
               ...round,
-              races: round.races.map(race => ({
+              races: round.races.map((race: BracketRace) => ({
                 ...race,
                 finalRankings: rankings,
                 status: 'completed' as const,
@@ -612,23 +643,18 @@ const bracketSlice = createSlice({
       .addCase(disqualifyRacer.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, racerId } = action.payload;
 
-        if (!state[raceId]?.[raceClass]) return;
+        if (!state.entities[raceId]?.[raceClass]) return;
 
-        // Find and update the race
-        state[raceId][raceClass] = state[raceId][raceClass].map(bracketRound => {
+        state.entities[raceId][raceClass] = state.entities[raceId][raceClass].map((bracketRound: BracketRound) => {
           if (bracketRound.roundNumber === round && bracketRound.bracketType === bracketType) {
             return {
               ...bracketRound,
-              races: bracketRound.races.map(race => {
+              races: bracketRound.races.map((race: BracketRace) => {
                 if (race.raceNumber === raceNumber) {
-                  // Add racer to disqualified list
                   const disqualifiedRacers = [...(race.disqualifiedRacers || []), racerId];
+                  const winners = race.winners?.filter((id: string) => id !== racerId) || [];
+                  const losers = race.losers?.filter((id: string) => id !== racerId) || [];
                   
-                  // Remove from winners/losers if present
-                  const winners = race.winners?.filter(id => id !== racerId) || [];
-                  const losers = race.losers?.filter(id => id !== racerId) || [];
-                  
-                  // If this is the final race, update rankings
                   if (race.finalRankings) {
                     const rankings = { ...race.finalRankings };
                     Object.entries(rankings).forEach(([position, id]) => {
@@ -663,10 +689,6 @@ const bracketSlice = createSlice({
       });
   },
 });
-
-// Update selector to use new state structure
-export const selectBracketsByRaceAndClass = (state: RootState, raceId: string, raceClass: string) =>
-  state[raceId]?.[raceClass] || [];
 
 export const { resetBrackets } = bracketSlice.actions;
 export default bracketSlice.reducer;

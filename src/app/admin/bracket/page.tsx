@@ -2,7 +2,6 @@
 import PageHeader from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { getActiveRaces } from '@/helpers/racers';
 import {
   loadBracketsFromStorage,
   updateRaceResults,
@@ -26,7 +25,6 @@ import { AppDispatch } from '@/store/store';
 import { Users, Trophy, Ban } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import RaceTabsHeader from '@/components/RaceTabsHeader';
 import { selectRaceClassesByRaceId, selectRacersByRaceId } from '@/store/selectors/raceSelectors';
 import { RootState } from '@/store/store';
 import type { Race } from '@/store/features/racesSlice';
@@ -128,7 +126,12 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
               }
             });
             if (onFinalRankings && Object.keys(validRankings).length === 4) {
-              onFinalRankings(validRankings as any);
+              onFinalRankings({
+                first: validRankings.first!,
+                second: validRankings.second!,
+                third: validRankings.third!,
+                fourth: validRankings.fourth!
+              });
             }
           } else {
             // For other races, update winners/losers
@@ -370,12 +373,11 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
 
 // Add ClassTabsHeader component
 interface ClassTabsHeaderProps {
-  selectedClass?: string;
   raceClasses: Array<{ raceClass: string }>;
   onTabChange: (raceClass: string) => void;
 }
 
-const ClassTabsHeader = ({ selectedClass, raceClasses, onTabChange }: ClassTabsHeaderProps) => {
+const ClassTabsHeader = ({ raceClasses, onTabChange }: ClassTabsHeaderProps) => {
   return (
     <TabsList className="w-full justify-start border-b border-b-[1px] border-input">
       {raceClasses.map(({ raceClass }) => (
@@ -397,17 +399,21 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
   const selectedRaceClasses = useSelector((state: RootState) =>
     selectRaceClassesByRaceId(state, race.id)
   );
-  const brackets = useSelector((state: RootState) => 
-    state.brackets[race.id]?.[selectedClass] || []
-  );
+  const brackets = useSelector((state: RootState) => {
+    const bracketData = state.brackets.entities[race.id]?.[selectedClass] || [];
+    console.log('Bracket data for', race.id, selectedClass, ':', bracketData);
+    return bracketData;
+  });
   const racersByClass = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
   const [raceWinners, setRaceWinners] = useState<Record<string, Record<string, string[]>>>({});
 
   const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
 
   useEffect(() => {
-    console.log('Current Brackets State:', brackets);
-  }, [brackets]);
+    console.log('Selected class:', selectedClass);
+    console.log('Race class:', raceClass);
+    console.log('Brackets:', brackets);
+  }, [selectedClass, raceClass, brackets]);
 
   if (!raceClass) {
     return null;
@@ -680,13 +686,13 @@ const Bracket = () => {
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-  const activeRaces = getActiveRaces(races);
   const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
   const [selectedClass, setSelectedClass] = useState<string>(
     activeRace?.raceClasses[0]?.raceClass || ''
   );
 
   useEffect(() => {
+    console.log('Loading initial data...');
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
     dispatch(loadBracketsFromStorage());
@@ -702,11 +708,11 @@ const Bracket = () => {
     if (activeRace?.id && activeRace.id !== selectedRaceId) {
       setSelectedRaceId(activeRace.id);
       // Set the first race class as selected by default
-      if (activeRace.raceClasses.length > 0) {
+      if (activeRace.raceClasses?.length > 0) {
         setSelectedClass(activeRace.raceClasses[0].raceClass);
       }
     }
-  }, [activeRace?.id, selectedRaceId]);
+  }, [activeRace?.id, selectedRaceId, activeRace?.raceClasses]);
 
   const handleResetBrackets = () => {
     if (window.confirm('Are you sure you want to reset all brackets? This cannot be undone.')) {
@@ -745,7 +751,6 @@ const Bracket = () => {
               <Tabs value={selectedClass} className="w-full">
                 {activeRace && (
                   <ClassTabsHeader
-                    selectedClass={selectedClass}
                     raceClasses={activeRace.raceClasses}
                     onTabChange={setSelectedClass}
                   />

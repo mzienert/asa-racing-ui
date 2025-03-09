@@ -60,11 +60,13 @@ const Racers = () => {
   useEffect(() => {
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
+  }, [dispatch]);
 
-    if (races.length > 0 && !hasRace) {
+  useEffect(() => {
+    if (races.length > 0 && !hasRace && !activeRace) {
       dispatch(setCurrentRace(races[0].id));
     }
-  }, [dispatch, races.length, hasRace]);
+  }, [dispatch, hasRace, activeRace, races]);
 
   useEffect(() => {
     setSelectedRaceId(activeRace?.id);
