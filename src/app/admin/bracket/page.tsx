@@ -124,16 +124,51 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
         return newRankings;
       });
     } else {
-      // Original logic for non-finals races
-      setSelectedRacers(prev => {
-        if (prev.includes(racerId)) {
-          return prev.filter(id => id !== racerId);
+      // Check if this is a Second Chance Round 2 race (Race 6 or 8)
+      const isSecondChanceRound2 = race.bracketType === 'losers' && 
+        race.round === 2 && 
+        (race.raceNumber === 6 || race.raceNumber === 8);
+
+      if (isSecondChanceRound2) {
+        // For Second Chance Round 2, only allow one winner
+        setSelectedRacers(prev => {
+          if (prev.includes(racerId)) {
+            return [];
+          }
+          return [racerId];
+        });
+
+        // Immediately trigger winner selection when a racer is selected
+        if (!selectedRacers.includes(racerId)) {
+          const losers = race.racers
+            .filter(r => r.id !== racerId)
+            .map(r => r.id);
+          onWinnerSelect(race.raceNumber, [racerId], losers);
         }
-        if (prev.length < 2) {
-          return [...prev, racerId];
+      } else {
+        // Normal race logic (allow two winners)
+        setSelectedRacers(prev => {
+          if (prev.includes(racerId)) {
+            return prev.filter(id => id !== racerId);
+          }
+          if (prev.length < 2) {
+            return [...prev, racerId];
+          }
+          return prev;
+        });
+
+        // Original logic for triggering winner selection
+        if (
+          !selectedRacers.includes(racerId) &&
+          selectedRacers.length === 1
+        ) {
+          const winners = [...selectedRacers, racerId];
+          const losers = race.racers
+            .filter(r => !winners.includes(r.id))
+            .map(r => r.id);
+          onWinnerSelect(race.raceNumber, winners, losers);
         }
-        return prev;
-      });
+      }
     }
   };
 
@@ -307,6 +342,10 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
 
   const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
 
+  useEffect(() => {
+    console.log('Current Brackets State:', brackets);
+  }, [brackets]);
+
   if (!raceClass) {
     return null;
   }
@@ -326,9 +365,15 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     );
   }
 
-  // Filter brackets for the current class
-  const winnersBrackets = brackets.filter(b => b.bracketType === 'winners');
-  const losersBrackets = brackets.filter(b => b.bracketType === 'losers');
+  // Filter and organize brackets
+  const winnersBrackets = brackets
+    .filter(b => b.bracketType === 'winners')
+    .sort((a, b) => a.roundNumber - b.roundNumber);
+
+  const secondChanceRounds = brackets
+    .filter(b => b.bracketType === 'losers')
+    .sort((a, b) => a.roundNumber - b.roundNumber);
+
   const finalBrackets = brackets.filter(b => b.bracketType === 'final');
 
   const handleWinnerSelect = (
@@ -339,7 +384,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     winners: string[],
     losers: string[]
   ) => {
-    console.log('Debug - Winner Selection:', {
+    console.log('Winner Selection:', {
       raceClass,
       raceNumber,
       round,
@@ -348,7 +393,6 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
       losers,
     });
 
-    // Only store winners for completed races
     setRaceWinners(prev => ({
       ...prev,
       [raceClass]: {
@@ -378,7 +422,6 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     bracketType: 'winners' | 'losers' | 'final',
     status: string
   ) => {
-    // Only return winners for completed races
     if (status === 'completed') {
       return raceWinners[raceClass]?.[`${bracketType}-${round}-${raceNumber}`] || [];
     }
@@ -411,14 +454,14 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           {/* Winners Bracket Column */}
           <div className="flex-1">
             <h4 className="text-sm font-medium mb-4 text-green-600">Winners Bracket</h4>
-            <div className="space-y-4">
+            <div className="space-y-12">
               {winnersBrackets.map(round => (
                 <div
                   key={`${round.roundNumber}-${round.bracketType}`}
                   className="bracket-round"
                 >
-                  <h5 className="text-sm font-medium mb-1">Round {round.roundNumber}</h5>
-                  <div className="relative space-y-1">
+                  <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
+                  <div className="relative space-y-8">
                     {round.races.map(bracketRace => (
                       <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
                         <BracketRace
@@ -445,7 +488,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                         {bracketRace.nextWinnerRace && (
                           <div className="absolute right-0 top-1/2 w-16 border-t border-gray-300" />
                         )}
-                        {bracketRace.nextLoserRace && (
+                        {bracketRace.nextLoserRace && round.roundNumber === 1 && (
                           <div className="absolute right-0 top-3/4 w-32 border-t border-gray-300 border-dashed" />
                         )}
                       </div>
@@ -457,59 +500,61 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           </div>
 
           {/* Second Chance Column */}
-          {losersBrackets.length > 0 && (
-            <div className="flex-1">
-              <h4 className="text-sm font-medium mb-4 text-yellow-600">Second Chance</h4>
-              <div className="space-y-4">
-                {losersBrackets.map(round => (
-                  <div
-                    key={`${round.roundNumber}-${round.bracketType}`}
-                    className="bracket-round"
-                  >
-                    <h5 className="text-sm font-medium mb-1">Round {round.roundNumber}</h5>
-                    <div className="relative space-y-1">
-                      {round.races.map(bracketRace => (
-                        <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
-                          <BracketRace
-                            race={{
-                              ...bracketRace,
-                              bracketType: 'second chance' as BracketRace['bracketType'],
-                            }}
-                            onWinnerSelect={(raceNumber, winners, losers) =>
-                              handleWinnerSelect(
-                                raceClass.raceClass,
-                                raceNumber,
-                                round.roundNumber,
-                                round.bracketType,
-                                winners,
-                                losers
-                              )
-                            }
-                            winners={getWinnersForRace(
+          <div className="flex-1">
+            <h4 className="text-sm font-medium mb-4 text-yellow-600">Second Chance</h4>
+            <div className="space-y-12">
+              {secondChanceRounds.map(round => (
+                <div
+                  key={`${round.roundNumber}-${round.bracketType}`}
+                  className="bracket-round"
+                >
+                  <h5 className="text-sm font-medium mb-2">
+                    {round.roundNumber === 1 ? 'First Round (Races 5,7)' :
+                     'Second Round (Races 6,8)'}
+                  </h5>
+                  <div className="relative space-y-8">
+                    {round.races.map(bracketRace => (
+                      <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
+                        <BracketRace
+                          race={bracketRace}
+                          onWinnerSelect={(raceNumber, winners, losers) =>
+                            handleWinnerSelect(
                               raceClass.raceClass,
-                              bracketRace.raceNumber,
+                              raceNumber,
                               round.roundNumber,
-                              round.bracketType,
-                              bracketRace.status
-                            )}
-                          />
-                          {/* Add connection lines */}
-                          {bracketRace.nextWinnerRace && (
-                            <div className="absolute right-0 top-1/2 w-16 border-t border-gray-300" />
+                              'losers',
+                              winners,
+                              losers
+                            )
+                          }
+                          winners={getWinnersForRace(
+                            raceClass.raceClass,
+                            bracketRace.raceNumber,
+                            round.roundNumber,
+                            'losers',
+                            bracketRace.status
                           )}
-                        </div>
-                      ))}
-                    </div>
+                        />
+                        {/* Add connection lines */}
+                        {bracketRace.nextWinnerRace && round.roundNumber === 1 && (
+                          <div className="absolute right-0 top-1/2 w-16 border-t border-gray-300" />
+                        )}
+                        {/* Add visual indicator for final second chance races */}
+                        {round.roundNumber === 2 && (
+                          <div className="absolute left-0 top-0 w-1 h-full bg-yellow-500" />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Finals Column */}
           {finalBrackets[0]?.races.length > 0 && (
             <div className="flex-1">
-              <h4 className="text-sm font-medium mb-4 text-blue-600">Finals</h4>
+              <h4 className="text-sm font-medium mb-4 text-blue-600">Finals (Race 10)</h4>
               <div className="space-y-4">
                 {finalBrackets.map(round => (
                   <div

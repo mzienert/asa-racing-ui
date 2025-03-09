@@ -119,16 +119,15 @@ const generateFullBracketStructure = (
   raceId: string,
   raceClass: string
 ): BracketRound[] => {
-  const totalRounds = calculateTotalRounds(racers.length);
   const rounds: BracketRound[] = [];
 
-  // Create first round
+  // Create first round of Winners bracket (Races 1-4)
   const firstRoundRaces = groupIntoRaces(racers).map((race, idx) => ({
     ...race,
     bracketType: 'winners' as const,
     round: 1,
     nextWinnerRace: Math.floor(idx / 2) + 1, // Next winners race number
-    nextLoserRace: idx + 1, // Initial losers race number
+    nextLoserRace: idx <= 1 ? 5 : 7, // Point to Race 5 or 7 in Second Chance
   }));
 
   rounds.push({
@@ -139,29 +138,37 @@ const generateFullBracketStructure = (
     bracketType: 'winners',
   });
 
-  // Pre-generate empty subsequent rounds
-  for (let i = 2; i <= totalRounds; i++) {
-    rounds.push({
-      roundNumber: i,
-      races: [],
-      raceId,
-      raceClass,
-      bracketType: 'winners',
-    });
-
-    // Add corresponding losers bracket round
-    rounds.push({
-      roundNumber: i,
-      races: [],
-      raceId,
-      raceClass,
-      bracketType: 'losers',
-    });
-  }
-
-  // Add final round (winners vs losers champion)
+  // Add Winners bracket Round 2
   rounds.push({
-    roundNumber: totalRounds + 1,
+    roundNumber: 2,
+    races: [],
+    raceId,
+    raceClass,
+    bracketType: 'winners',
+  });
+
+  // Add Second Chance rounds
+  // Round 1 (Races 5,7)
+  rounds.push({
+    roundNumber: 1,
+    races: [],
+    raceId,
+    raceClass,
+    bracketType: 'losers',
+  });
+
+  // Round 2 (Races 6,8)
+  rounds.push({
+    roundNumber: 2,
+    races: [],
+    raceId,
+    raceClass,
+    bracketType: 'losers',
+  });
+
+  // Add Finals (Race 10)
+  rounds.push({
+    roundNumber: 4,
     races: [],
     raceId,
     raceClass,
@@ -227,62 +234,13 @@ const populateNextRoundRaces = (
   bracketType: 'winners' | 'losers' | 'final'
 ): BracketRound[] => {
   const updatedRounds = [...rounds];
-
-  // Only check for finals creation after round 2
-  if (currentRound >= 2) {
-    // Get winners from both brackets' completed races in current round
-    const currentRoundWinners = new Set<string>();
-
-    // Get all completed races from current round in both brackets
-    rounds.forEach(round => {
-      if (
-        (round.bracketType === 'winners' || round.bracketType === 'losers') &&
-        round.roundNumber === currentRound
-      ) {
-        round.races.forEach(race => {
-          if (race.status === 'completed' && race.winners) {
-            race.winners.forEach(w => currentRoundWinners.add(w));
-          }
-        });
-      }
-    });
-
-    console.log('Debug - Current Round Winners:', {
-      count: currentRoundWinners.size,
-      racers: Array.from(currentRoundWinners),
-      currentRound,
-      bracketType,
-    });
-
-    // If both brackets in current round are complete, create finals
-    const currentRoundComplete = rounds
-      .filter(
-        r =>
-          (r.bracketType === 'winners' || r.bracketType === 'losers') &&
-          r.roundNumber === currentRound
-      )
-      .every(r => r.races.every(race => race.status === 'completed'));
-
-    if (currentRoundComplete && currentRoundWinners.size <= 4 && bracketType !== 'final') {
-      const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
-      if (finalsIndex >= 0 && rounds[finalsIndex].races.length === 0) {
-        const finalsRace = createNextRoundRace(rounds[finalsIndex].roundNumber, 1, 0, 'final');
-
-        // Get all winners from current round
-        const finalRacers = getRacersByIds(racers, Array.from(currentRoundWinners));
-        finalsRace.racers = finalRacers;
-
-        updatedRounds[finalsIndex].races = [finalsRace];
-
-        console.log('Debug - Created Finals:', {
-          racers: finalRacers.map(r => r.name),
-          round: rounds[finalsIndex].roundNumber,
-        });
-
-        return updatedRounds;
-      }
-    }
-  }
+  console.log('Populating next round:', {
+    currentRound,
+    raceNumber,
+    bracketType,
+    winners,
+    losers
+  });
 
   if (bracketType === 'winners') {
     // Handle winners bracket progression
@@ -300,10 +258,14 @@ const populateNextRoundRaces = (
       const existingRace = rounds[nextRoundIndex].races.find(r => r.raceNumber === nextRaceNumber);
 
       if (existingRace) {
-        // Add winners to existing race
-        existingRace.racers = [...existingRace.racers, ...getRacersByIds(racers, winners)];
+        // Check for duplicates before adding winners
+        const newWinners = winners.filter(
+          winnerId => !existingRace.racers.some(r => r.id === winnerId)
+        );
+        if (newWinners.length > 0) {
+          existingRace.racers = [...existingRace.racers, ...getRacersByIds(racers, newWinners)];
+        }
       } else {
-        // Create new race with winners
         const newRace = createNextRoundRace(
           nextRoundNumber,
           nextRaceNumber,
@@ -315,59 +277,125 @@ const populateNextRoundRaces = (
       }
     }
 
-    // Only handle losers for Round 1
+    // Handle losers going to Second Chance Round 1 (only from first round)
     if (currentRound === 1) {
       const loserRoundIndex = rounds.findIndex(
         r =>
-          r.roundNumber === 2 &&
+          r.roundNumber === 1 &&
           r.bracketType === 'losers' &&
           r.raceId === raceId &&
           r.raceClass === raceClass
       );
 
       if (loserRoundIndex >= 0) {
-        const loserRaceNumber = Math.ceil(raceNumber / 2);
-        const existingRace = updatedRounds[loserRoundIndex].races.find(
-          r => r.raceNumber === loserRaceNumber
+        // Calculate Second Chance race number (5 or 7 based on winners race number)
+        const secondChanceRaceNumber = raceNumber <= 2 ? 5 : 7;
+        console.log('Creating Second Chance race:', secondChanceRaceNumber);
+
+        // Find or create the race
+        let targetRace = updatedRounds[loserRoundIndex].races.find(
+          r => r.raceNumber === secondChanceRaceNumber
         );
 
-        if (existingRace) {
-          existingRace.racers = [...existingRace.racers, ...getRacersByIds(racers, losers)];
-        } else {
-          const newRace = createNextRoundRace(2, loserRaceNumber, loserRaceNumber - 1, 'losers');
-          newRace.racers = getRacersByIds(racers, losers);
-          updatedRounds[loserRoundIndex].races.push(newRace);
+        if (!targetRace) {
+          targetRace = createNextRoundRace(1, secondChanceRaceNumber, secondChanceRaceNumber - 5, 'losers');
+          targetRace.nextWinnerRace = secondChanceRaceNumber + 1; // Points to Race 6 or 8
+          updatedRounds[loserRoundIndex].races.push(targetRace);
+        }
+
+        // Add losers to the race
+        const newLosers = losers.filter(
+          loserId => !targetRace.racers.some(r => r.id === loserId)
+        );
+        if (newLosers.length > 0) {
+          targetRace.racers = [...targetRace.racers, ...getRacersByIds(racers, newLosers)];
+        }
+      }
+    }
+
+    // Check if Winners bracket Round 2 is complete and create finals if Second Chance is ready
+    if (currentRound === 2) {
+      const winnersChampions = winners; // This will be two winners from Round 2
+      
+      // Check if Second Chance Round 2 (Race 6) is complete
+      const secondChanceRound2 = rounds.find(
+        r => r.roundNumber === 2 && r.bracketType === 'losers'
+      );
+      const race6 = secondChanceRound2?.races.find(r => r.raceNumber === 6);
+      const race6Complete = race6?.status === 'completed';
+      const race6Winner = race6?.winners?.[0];
+
+      if (race6Complete && race6Winner && winnersChampions.length === 2) {
+        // Create finals (Race 10) with all three racers
+        const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
+        if (finalsIndex >= 0) {
+          const finalsRace = createNextRoundRace(4, 10, 0, 'final');
+          finalsRace.racers = [
+            ...getRacersByIds(racers, winnersChampions), // Add both winners from Round 2
+            ...getRacersByIds(racers, [race6Winner]) // Add the Second Chance winner
+          ];
+          updatedRounds[finalsIndex].races = [finalsRace];
         }
       }
     }
   } else if (bracketType === 'losers') {
-    // Progress losers bracket winners to next losers round
+    // Handle Second Chance progression
     const nextRoundNumber = currentRound + 1;
-    const nextRoundIndex = rounds.findIndex(
-      r =>
-        r.roundNumber === nextRoundNumber &&
-        r.bracketType === 'losers' &&
-        r.raceId === raceId &&
-        r.raceClass === raceClass
-    );
-
-    if (nextRoundIndex >= 0) {
-      const nextRaceNumber = Math.floor((raceNumber - 1) / 2) + 1;
-      const existingRace = updatedRounds[nextRoundIndex].races.find(
-        r => r.raceNumber === nextRaceNumber
+    
+    // Get all completed races from current round
+    const currentRoundRaces = rounds.find(
+      r => r.roundNumber === currentRound && r.bracketType === 'losers'
+    )?.races || [];
+    
+    const allCurrentRoundComplete = currentRoundRaces.every(r => r.status === 'completed');
+    
+    if (allCurrentRoundComplete && currentRound === 1) {
+      const nextRoundIndex = rounds.findIndex(
+        r => r.roundNumber === 2 && r.bracketType === 'losers'
       );
+      
+      if (nextRoundIndex >= 0) {
+        // Create Race 6 and 8
+        currentRoundRaces.forEach(race => {
+          const nextRaceNumber = race.raceNumber === 5 ? 6 : 8;
+          console.log('Creating Second Chance Round 2 race:', nextRaceNumber);
+          
+          // Check if race already exists
+          const existingRace = updatedRounds[nextRoundIndex].races.find(
+            r => r.raceNumber === nextRaceNumber
+          );
 
-      if (existingRace) {
-        existingRace.racers = [...existingRace.racers, ...getRacersByIds(racers, winners)];
-      } else {
-        const newRace = createNextRoundRace(
-          nextRoundNumber,
-          nextRaceNumber,
-          Math.floor((raceNumber - 1) / 2),
-          'losers'
-        );
-        newRace.racers = getRacersByIds(racers, winners);
-        updatedRounds[nextRoundIndex].races.push(newRace);
+          if (!existingRace) {
+            const newRace = createNextRoundRace(2, nextRaceNumber, nextRaceNumber - 6, 'losers');
+            newRace.racers = getRacersByIds(racers, race.winners || []);
+            updatedRounds[nextRoundIndex].races.push(newRace);
+          }
+        });
+      }
+    }
+
+    // Check if this is Race 6 completion and Winners bracket Round 2 is complete
+    if (currentRound === 2 && raceNumber === 6) {
+      const race6Winner = winners[0];
+      
+      // Check if Winners bracket Round 2 is complete
+      const winnersRound2 = rounds.find(
+        r => r.roundNumber === 2 && r.bracketType === 'winners'
+      );
+      const winnersRound2Complete = winnersRound2?.races.every(r => r.status === 'completed');
+      const winnersChampions = winnersRound2?.races[0]?.winners;
+
+      if (winnersRound2Complete && winnersChampions?.length === 2) {
+        // Create finals (Race 10) with all three racers
+        const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
+        if (finalsIndex >= 0) {
+          const finalsRace = createNextRoundRace(4, 10, 0, 'final');
+          finalsRace.racers = [
+            ...getRacersByIds(racers, winnersChampions), // Add both winners from Round 2
+            ...getRacersByIds(racers, [race6Winner]) // Add the Second Chance winner
+          ];
+          updatedRounds[finalsIndex].races = [finalsRace];
+        }
       }
     }
   }
