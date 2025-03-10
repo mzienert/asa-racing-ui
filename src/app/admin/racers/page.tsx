@@ -33,6 +33,22 @@ const RaceContent = ({ race }: RaceContentProps) => {
   const classes = useSelector((state: RootState) => selectRaceClassesByRaceId(state, race.id));
   const racers = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
 
+  if (classes.length === 0) {
+    return (
+      <TabsContent key={race.id} value={race.id} className="mt-4">
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <Users className="h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">No Race Classes</h3>
+            <p className="text-muted-foreground">
+              Create race classes in the Race Management section before adding racers.
+            </p>
+          </div>
+        </Card>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
       {classes.map((raceClass, index) => (
@@ -72,6 +88,15 @@ const Racers = () => {
     setSelectedRaceId(activeRace?.id);
   }, [activeRace?.id]);
 
+  if (races.length === 0) {
+    return (
+      <NoRaceState 
+        title="Racer Management" 
+        description="Create a race in Race Management before adding racers." 
+      />
+    );
+  }
+
   if (!hasRace) {
     return (
       <NoRaceState
@@ -80,7 +105,7 @@ const Racers = () => {
       />
     );
   }
-
+  console.log('Racers:', races);
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="space-y-6">

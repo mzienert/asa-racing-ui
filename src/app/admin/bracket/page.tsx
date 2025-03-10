@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { RaceStatus } from '@/store/features/bracketSlice';
 import { Circle, RefreshCw } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import NoRaceState from '@/components/NoRaceState';
 
 interface BracketContentProps {
   race: Race;
@@ -736,6 +737,16 @@ const Bracket = () => {
       }
     }
   };
+
+  // Add check for no races
+  if (races.length === 0) {
+    return (
+      <NoRaceState 
+        title="Brackets" 
+        description="Create a race in Race Management to start creating brackets." 
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

@@ -32,6 +32,25 @@ const SeedingContent = ({ race }: SeedingContentProps) => {
   );
   const racersByClass = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
 
+  // Add check for empty racers
+  const hasRacers = Object.values(racersByClass).some(classRacers => classRacers.length > 0);
+
+  if (!hasRacers) {
+    return (
+      <TabsContent key={race.id} value={race.id} className="mt-4">
+        <Card className="p-8">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <Users className="h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">No Racers Added</h3>
+            <p className="text-muted-foreground">
+              Add racers in the Racer Management section before starting seeding.
+            </p>
+          </div>
+        </Card>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent key={race.id} value={race.id} className="mt-4 space-y-6">
       {selectedRaceClasses.map((raceClass, index) => (
@@ -55,7 +74,6 @@ const Racers = () => {
   const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
 
   useEffect(() => {
-    // Load both races and racers
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
   }, [dispatch]);
@@ -70,6 +88,16 @@ const Racers = () => {
   useEffect(() => {
     setSelectedRaceId(activeRace?.id);
   }, [activeRace?.id]);
+
+  // Add check for no races
+  if (races.length === 0) {
+    return (
+      <NoRaceState 
+        title="Race Seeding" 
+        description="Create a race in Race Management to start seeding." 
+      />
+    );
+  }
 
   if (!hasRace) {
     return <NoRaceState title="Race Seeding" description="Seed your races here." />;

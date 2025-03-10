@@ -16,6 +16,7 @@ import RaceListContainer from '@/components/RaceListContainer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import NoRaceState from '@/components/NoRaceState';
 
 export interface RaceDetailsProps {
   race: {
@@ -62,12 +63,15 @@ export default function RacesPage() {
           </div>
         </Card>
 
-        <RaceListContainer
-          races={allRaces}
-          activeRaceId={activeRace?.id || null}
-          onSetCurrent={id => dispatch(setCurrentRace(id))}
-          onDelete={id => dispatch(deletePersistedRace(id))}
-        />
+        {/* Only show RaceListContainer when there are races */}
+        {allRaces.length > 0 && (
+          <RaceListContainer
+            races={allRaces}
+            activeRaceId={activeRace?.id || null}
+            onSetCurrent={id => dispatch(setCurrentRace(id))}
+            onDelete={id => dispatch(deletePersistedRace(id))}
+          />
+        )}
       </div>
     </div>
   );
