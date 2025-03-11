@@ -36,6 +36,8 @@ import { RaceStatus } from '@/store/features/bracketSlice';
 import { Circle, RefreshCw } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NoRaceState from '@/components/NoRaceState';
+import { Racer } from '@/store/features/racersSlice';
+import { createSelector } from '@reduxjs/toolkit';
 
 interface BracketContentProps {
   race: Race;
@@ -64,6 +66,7 @@ interface BracketRaceProps {
   race: BracketRace;
   onWinnerSelect: (raceNumber: number, winners: string[], losers: string[]) => void;
   winners: string[];
+  round: number;
   onFinalRankings?: (rankings: {
     first: string;
     second: string;
@@ -82,7 +85,13 @@ const RaceStatusIndicator = ({ status }: { status: RaceStatus }) => {
   return <Circle className={cn('h-4 w-4', statusColors[status])} />;
 };
 
-const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: BracketRaceProps) => {
+const BracketRace = ({
+  race,
+  onWinnerSelect,
+  winners,
+  round,
+  onFinalRankings,
+}: BracketRaceProps) => {
   const [selectedRacers, setSelectedRacers] = useState<string[]>(winners || []);
   const [rankings, setRankings] = useState<Record<string, number>>({});
   const dispatch = useDispatch<AppDispatch>();
@@ -106,132 +115,113 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
   }, [race.bracketType, winners, race.finalRankings, race.racers.length]);
 
   // Ensure we have valid racers
-  const validRacers = (race.racers || []).filter((racer): racer is Racer => 
-    racer != null && typeof racer === 'object' && 'id' in racer
+  const validRacers = (race.racers || []).filter(
+    (racer): racer is Racer => racer != null && typeof racer === 'object' && 'id' in racer
   );
 
-  // Determine if this is a second chance race with exactly 2 racers
-  const isSecondChanceTwoRacers = race.bracketType === 'losers' && validRacers.length === 2;
+  // Special case for 6 racers in second chance first round (Race 4)
+  const isSixRacersRace4 =
+    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 2;
+
+  // For 7 racers, Race 4 should allow 2 winners to advance to Race 5
+  const isSevenRacersRace4 =
+    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
+
+  // For 7 racers, Race 5 should allow 1 winner to advance to Finals
+  const isSevenRacersRace5 =
+    race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
+
+  // Determine if this is a second chance race with exactly 2 racers (but not Race 4 for 7 racers)
+  const isSecondChanceTwoRacers =
+    race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
 
   const handleRacerSelect = (racerId: string) => {
+    // For finals, handle rankings differently
     if (race.bracketType === 'final') {
-      console.log('Final race racer select - Initial state:', {
-        racerId,
-        currentRankings: rankings,
-        totalRacers: race.racers.length,
-        racers: race.racers.map(r => `${r.name} (${r.id})`),
-        validRacers: validRacers.map(r => `${r.name} (${r.id})`)
-      });
+      const isSelected = selectedRacers.includes(racerId);
+      const currentRanking = rankings[racerId];
 
-      // For finals, we track position 1-3 or 1-4 depending on number of racers
-      const currentPosition = rankings[racerId];
-      const newRankings = { ...rankings };
-
-      if (currentPosition) {
-        console.log('Removing existing position:', {
-          racer: racerId,
-          position: currentPosition
+      // If already selected, remove from rankings and selected racers
+      if (isSelected) {
+        setSelectedRacers(prev => prev.filter(id => id !== racerId));
+        setRankings(prev => {
+          const newRankings = { ...prev };
+          delete newRankings[racerId];
+          return newRankings;
         });
-        delete newRankings[racerId];
-      } else {
-        // Find next available position
-        const usedPositions = Object.values(newRankings);
-        let nextPosition = 1;
-        while (usedPositions.includes(nextPosition) && nextPosition <= race.racers.length) {
-          nextPosition++;
-        }
-        if (nextPosition <= race.racers.length) {
-          console.log('Assigning new position:', {
-            racer: racerId,
-            position: nextPosition,
-            usedPositions,
-            totalRacers: race.racers.length
-          });
-          newRankings[racerId] = nextPosition;
-        }
+        return;
       }
 
-      console.log('Updated rankings:', newRankings);
-      setRankings(newRankings);
-
-      // If we have all positions filled for the available racers
-      const positions = Object.entries(newRankings);
-      console.log('Checking positions:', {
-        positions,
-        racersLength: race.racers.length,
-        isComplete: positions.length === race.racers.length
-      });
-
-      if (positions.length === race.racers.length && onFinalRankings) {
-        console.log('All positions filled, preparing final rankings');
-        
-        // Sort positions by rank
-        const sortedPositions = positions.sort(([, a], [, b]) => a - b);
-        console.log('Sorted positions:', sortedPositions);
-        
-        const racerIds = sortedPositions.map(([id]) => id);
-        console.log('Racer IDs in order:', racerIds);
-        
-        // Create rankings object based on number of racers
-        const finalRankings = {
-          first: racerIds[0],
-          second: racerIds[1],
-          third: racerIds[2],
-          fourth: racerIds[2] // For 3 racers, third place is also fourth
-        };
-        
-        console.log('Final rankings being applied:', finalRankings);
-
-        // Update race results and final rankings
-        onWinnerSelect(race.raceNumber, [finalRankings.first, finalRankings.second], [finalRankings.third, finalRankings.fourth]);
-        onFinalRankings(finalRankings);
+      // If not selected, determine next available position
+      const usedPositions = Object.values(rankings);
+      let nextPosition = 1;
+      while (usedPositions.includes(nextPosition)) {
+        nextPosition++;
       }
-    } else if (isSecondChanceTwoRacers) {
-      // For second chance with exactly 2 racers, only allow one winner
-      const newSelectedRacers = selectedRacers.includes(racerId) ? [] : [racerId];
-      setSelectedRacers(newSelectedRacers);
 
-      // If selecting a new winner, immediately trigger the winner selection
-      if (!selectedRacers.includes(racerId)) {
-        const loser = validRacers.find(r => r.id !== racerId)?.id;
-        if (loser) {
-          onWinnerSelect(race.raceNumber, [racerId], [loser]);
-        }
+      // Don't allow more than 3 positions for 3 racers, or 4 positions for more racers
+      const maxPositions = race.racers.length === 3 ? 3 : 4;
+      if (nextPosition > maxPositions) {
+        return;
       }
-    } else {
-      // Normal race logic (allow two winners)
-      if (selectedRacers.includes(racerId)) {
-        const newSelectedRacers = selectedRacers.filter(id => id !== racerId);
-        setSelectedRacers(newSelectedRacers);
+
+      // Add to rankings and selected racers
+      setSelectedRacers(prev => [...prev, racerId]);
+      setRankings(prev => ({
+        ...prev,
+        [racerId]: nextPosition,
+      }));
+      return;
+    }
+
+    // Special handling for Race 4 with 6 racers (only allow 1 winner)
+    if (isSixRacersRace4) {
+      const isSelected = selectedRacers.includes(racerId);
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
+      }
+      return;
+    }
+
+    // Special handling for Race 4 with 7 racers
+    if (isSevenRacersRace4) {
+      const isSelected = selectedRacers.includes(racerId);
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 2) {
-        const newSelectedRacers = [...selectedRacers, racerId];
-        setSelectedRacers(newSelectedRacers);
-
-        // Trigger winner selection when we have two winners
-        if (newSelectedRacers.length === 2) {
-          const losers = validRacers
-            .filter(r => !newSelectedRacers.includes(r.id))
-            .map(r => r.id);
-          onWinnerSelect(race.raceNumber, newSelectedRacers, losers);
-        }
+        setSelectedRacers([...selectedRacers, racerId]);
       }
+      return;
+    }
+
+    // Special handling for Race 5 with 2 racers from Race 4
+    if (isSevenRacersRace5 || isSecondChanceTwoRacers) {
+      const isSelected = selectedRacers.includes(racerId);
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
+      }
+      return;
+    }
+
+    // Default handling for other races
+    const isSelected = selectedRacers.includes(racerId);
+    if (isSelected) {
+      setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+    } else if (selectedRacers.length < 2) {
+      setSelectedRacers([...selectedRacers, racerId]);
     }
   };
 
   const getRacerPosition = (racerId: string): string => {
     if (race.bracketType === 'final') {
-      console.log('Getting racer position:', {
-        racerId,
-        rankings,
-        finalRankings: race.finalRankings,
-        totalRacers: race.racers.length
-      });
-
       const position = rankings[racerId];
       if (position) {
         // For 3 racers, position 3 should show as "third"
         if (race.racers.length === 3 && position === 3) {
-          console.log('Showing third for 3-racer final:', racerId);
           return 'third';
         }
         return getPositionName(position);
@@ -240,8 +230,10 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
       if (race.finalRankings) {
         if (race.finalRankings.first === racerId) return 'first';
         if (race.finalRankings.second === racerId) return 'second';
-        if (race.racers.length === 3 && (race.finalRankings.third === racerId || race.finalRankings.fourth === racerId)) {
-          console.log('Showing third for saved rankings in 3-racer final:', racerId);
+        if (
+          race.racers.length === 3 &&
+          (race.finalRankings.third === racerId || race.finalRankings.fourth === racerId)
+        ) {
           return 'third';
         }
         if (race.finalRankings.fourth === racerId) return 'fourth';
@@ -267,14 +259,24 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
   };
 
   const isSelected = (racerId: string) => {
+    // For final races, we need to check selectedRacers directly
     if (race.bracketType === 'final') {
-      return !!rankings[racerId];
+      return selectedRacers.includes(racerId);
     }
+    // For completed races, check winners array
+    if (race.status === 'completed') {
+      return race.winners?.includes(racerId);
+    }
+    // For pending races, check selectedRacers
     return selectedRacers.includes(racerId);
   };
 
   const handleDisqualify = (racerId: string) => {
-    if (window.confirm('Are you sure you want to disqualify this racer? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to disqualify this racer? This action cannot be undone.'
+      )
+    ) {
       // Remove from selected racers if present
       setSelectedRacers(prev => prev.filter(id => id !== racerId));
 
@@ -293,18 +295,16 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
           raceId: race.raceId,
           raceClass: race.raceClass,
           raceNumber: race.raceNumber,
-          round: race.round,
+          round: round,
           bracketType: race.bracketType,
           racerId,
-          racers: race.racers
+          racers: race.racers,
         })
       ).then(() => {
         // After disqualification, update winners/losers if needed
         if (race.status === 'completed') {
-          const remainingRacers = race.racers
-            .filter(r => r.id !== racerId)
-            .map(r => r.id);
-          
+          const remainingRacers = race.racers.filter(r => r.id !== racerId).map(r => r.id);
+
           if (race.bracketType === 'final') {
             // For finals, recalculate rankings
             const validRankings = { ...race.finalRankings };
@@ -318,7 +318,7 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
                 first: validRankings.first!,
                 second: validRankings.second!,
                 third: validRankings.third!,
-                fourth: validRankings.fourth!
+                fourth: validRankings.fourth!,
               });
             }
           } else {
@@ -330,6 +330,75 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
         }
       });
     }
+  };
+
+  const handleCompleteRace = () => {
+    if (selectedRacers.length === 0) {
+      return;
+    }
+
+    // Special handling for finals
+    if (race.bracketType === 'final') {
+      const sortedRacers = [...selectedRacers].sort((a, b) => rankings[a] - rankings[b]);
+      const finalRankings = {
+        first: sortedRacers[0],
+        second: sortedRacers[1],
+        third: sortedRacers[2],
+        fourth: race.racers.length > 3 ? sortedRacers[3] : undefined,
+      };
+
+      // Only complete if we have all required positions filled
+      const requiredPositions = race.racers.length === 3 ? 3 : 4;
+      if (sortedRacers.length !== requiredPositions) {
+        return;
+      }
+
+      if (onFinalRankings) {
+        onFinalRankings(finalRankings as any);
+      }
+      setSelectedRacers([]);
+      setRankings({});
+      return;
+    }
+
+    // For Race 4 in 6-racer scenario, ensure we have exactly 1 winner
+    if (isSixRacersRace4 && selectedRacers.length !== 1) {
+      return;
+    }
+
+    // For Race 4 in 7-racer scenario, ensure we have exactly 2 winners
+    if (isSevenRacersRace4 && selectedRacers.length !== 2) {
+      return;
+    }
+
+    // For Race 5 or second chance with 2 racers, ensure we have exactly 1 winner
+    if (
+      (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+      selectedRacers.length !== 1
+    ) {
+      return;
+    }
+
+    // For standard races, ensure we have exactly 2 winners (unless it's finals)
+    if (
+      !isSixRacersRace4 &&
+      !isSevenRacersRace4 &&
+      !isSevenRacersRace5 &&
+      !isSecondChanceTwoRacers &&
+      race.bracketType !== 'final' &&
+      selectedRacers.length !== 2
+    ) {
+      return;
+    }
+
+    const winners = selectedRacers;
+    const losers = validRacers.filter(racer => !winners.includes(racer.id)).map(racer => racer.id);
+
+    // Call onWinnerSelect with the complete race information
+    onWinnerSelect(race.raceNumber, winners, losers);
+
+    // Reset selected racers after completion
+    setSelectedRacers([]);
   };
 
   return (
@@ -347,47 +416,57 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2">
           <RaceStatusIndicator status={race.status} />
-          <span className="text-sm font-medium">Race {race.raceNumber}</span>
+          <span className="text-sm font-medium">
+            Race {race.raceNumber}
+            {race.bracketType === 'winners' && ' (Winners Bracket)'}
+            {race.bracketType === 'losers' && ' (Second Chance)'}
+            {race.bracketType === 'final' && ' (Finals)'}
+            {race.bracketType === 'losers' &&
+              race.raceNumber === 4 &&
+              validRacers.length > 2 &&
+              ' (Select Two Winners)'}
+            {isSevenRacersRace5 && ' (Select One Winner)'}
+            {isSecondChanceTwoRacers && !isSevenRacersRace5 && ' (Select One Winner)'}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground capitalize">
-          {race.bracketType}
-          {isSecondChanceTwoRacers && ' (Select One Winner)'}
-        </span>
+        {selectedRacers.length > 0 && race.status !== 'completed' && (
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleCompleteRace}>
+            Complete Race
+          </Button>
+        )}
       </div>
       <div className="match-pair space-y-2">
         {validRacers.map(racer => {
           const isDisqualified = race.disqualifiedRacers?.includes(racer.id);
-          
+
           return (
             <div key={racer.id} className="flex gap-2">
               <Button
                 variant={isSelected(racer.id) ? 'default' : 'ghost'}
                 disabled={
-                  race.status === 'completed' || 
-                  isDisqualified || 
-                  (isSecondChanceTwoRacers && selectedRacers.length === 1 && !selectedRacers.includes(racer.id))
+                  race.status === 'completed' ||
+                  isDisqualified ||
+                  // Only disable for second chance races with 2 racers when a different racer is already selected
+                  // But make an exception for Race 5 in the 7-racer scenario
+                  (isSecondChanceTwoRacers &&
+                    selectedRacers.length === 1 &&
+                    !selectedRacers.includes(racer.id) &&
+                    !isSevenRacersRace5)
                 }
                 className={cn(
                   'flex-1 justify-between h-auto py-2 px-3',
                   isSelected(racer.id) && 'bg-green-500/10 text-green-600',
                   !isSelected(racer.id) &&
-                    ((race.bracketType === 'final'
+                    (race.bracketType === 'final'
                       ? Object.keys(rankings).length === 4
-                      : isSecondChanceTwoRacers
-                        ? selectedRacers.length === 1
-                        : selectedRacers.length === 2)) &&
+                      : isSecondChanceTwoRacers && !isSevenRacersRace5
+                        ? selectedRacers.length === 1 && !selectedRacers.includes(racer.id)
+                        : selectedRacers.length === 2 && !selectedRacers.includes(racer.id)) &&
                     'opacity-50',
                   isDisqualified && 'bg-red-500/10 text-red-600 line-through'
                 )}
                 onClick={() => {
                   if (!isDisqualified) {
-                    console.log('Racer selection clicked:', {
-                      racerId: racer.id,
-                      isSecondChanceTwoRacers,
-                      currentlySelected: selectedRacers,
-                      bracketType: race.bracketType,
-                      totalRacers: validRacers.length
-                    });
                     handleRacerSelect(racer.id);
                   }
                 }}
@@ -410,11 +489,11 @@ const BracketRace = ({ race, onWinnerSelect, winners, onFinalRankings }: Bracket
                 )}
                 {race.bracketType === 'final' && rankings[racer.id] && (
                   <span className="text-sm font-medium text-green-600">
-                    #{rankings[racer.id]}
+                    #{race.racers.length === 3 && rankings[racer.id] === 4 ? 3 : rankings[racer.id]}
                   </span>
                 )}
               </Button>
-              
+
               {!isDisqualified && race.status !== 'completed' && (
                 <Button
                   variant="ghost"
@@ -464,19 +543,30 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
   const selectedRaceClasses = useSelector((state: RootState) =>
     selectRaceClassesByRaceId(state, race.id)
   );
-  const brackets: BracketRound[] = useSelector((state: RootState) => 
-    Object.values(state.brackets.entities[race.id]?.[selectedClass] || {})
+
+  // Memoized selector for brackets
+  const selectBracketsByRaceAndClass = createSelector(
+    [
+      (state: RootState) => state.brackets.entities,
+      (_state: RootState, raceId: string) => raceId,
+      (_state: RootState, _raceId: string, raceClass: string) => raceClass,
+    ],
+    (entities, raceId, raceClass) => {
+      return Object.values(entities[raceId]?.[raceClass] || {});
+    }
   );
+
+  const brackets: BracketRound[] = useSelector((state: RootState) =>
+    selectBracketsByRaceAndClass(state, race.id, selectedClass)
+  );
+
   const racersByClass = useSelector((state: RootState) => selectRacersByRaceId(state, race.id));
   const [raceWinners, setRaceWinners] = useState<Record<string, Record<string, string[]>>>({});
 
   const raceClass = selectedRaceClasses.find(rc => rc.raceClass === selectedClass);
 
-  useEffect(() => {
-    console.log('Selected class:', selectedClass);
-    console.log('Race class:', raceClass);
-    console.log('Brackets:', brackets);
-  }, [selectedClass, raceClass, brackets]);
+  // Calculate total racers for this class
+  const totalRacers = racersByClass[selectedClass]?.length || 0;
 
   if (!raceClass) {
     return null;
@@ -497,7 +587,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     );
   }
 
-  // Filter and organize brackets
+  // Filter and organize brackets first
   const winnersBrackets = brackets
     .filter(b => b.bracketType === 'winners')
     .sort((a, b) => a.roundNumber - b.roundNumber);
@@ -508,9 +598,14 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
 
   const finalBrackets = brackets.filter(b => b.bracketType === 'final');
 
-  // Calculate if we need second round for second chance
-  const firstRoundLosers = winnersBrackets[0]?.races.reduce((total, race) => 
-    total + (race.losers?.length || 0), 0) || 0;
+  // Then calculate if we need second round for second chance
+  const firstRoundLosers = winnersBrackets
+    .filter(b => b.roundNumber === 1)
+    .reduce(
+      (total, round) =>
+        round.races.reduce((raceTotal, race) => raceTotal + (race.losers?.length || 0), total),
+      0
+    );
   const needsSecondChanceSecondRound = firstRoundLosers > 2;
 
   const handleWinnerSelect = (
@@ -518,26 +613,43 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     raceNumber: number,
     round: number,
     bracketType: 'winners' | 'losers' | 'final',
-    winners: string[],
-    losers: string[]
+    selectedWinners: string[],
+    selectedLosers: string[]
   ) => {
-    console.log('Winner Selection:', {
-      raceClass,
-      raceNumber,
-      round,
-      bracketType,
-      winners,
-      losers,
-    });
+    // Validate the winners and losers based on race type
+    const isSevenRacersRace4 = raceNumber === 4 && bracketType === 'losers' && totalRacers === 7;
+    const isSevenRacersRace5 = raceNumber === 5 && bracketType === 'losers' && totalRacers === 7;
+    const isSecondChanceTwoRacers =
+      bracketType === 'losers' && selectedWinners.length + selectedLosers.length === 2;
 
-    setRaceWinners(prev => ({
-      ...prev,
-      [raceClass]: {
-        ...(prev[raceClass] || {}),
-        [`${bracketType}-${round}-${raceNumber}`]: winners,
-      },
-    }));
+    if (isSevenRacersRace4 && selectedWinners.length !== 2) {
+      return;
+    }
 
+    if (
+      (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+      selectedWinners.length !== 1
+    ) {
+      return;
+    }
+
+    if (
+      !isSevenRacersRace4 &&
+      !isSevenRacersRace5 &&
+      !isSecondChanceTwoRacers &&
+      bracketType !== 'final' &&
+      selectedWinners.length !== 2
+    ) {
+      return;
+    }
+
+    // Find the current race in the brackets
+    const currentRound = brackets.find(
+      b => b.roundNumber === round && b.bracketType === bracketType
+    );
+    const currentRace = currentRound?.races.find(r => r.raceNumber === raceNumber);
+
+    // Dispatch the race results update
     dispatch(
       updateRaceResults({
         raceId: race.id,
@@ -545,11 +657,27 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
         raceNumber,
         round,
         bracketType,
-        winners,
-        losers,
+        winners: selectedWinners,
+        losers: selectedLosers,
         racers: racersByClass[raceClass] || [],
       })
-    );
+    )
+      .then(() => {
+        // Update the winners state for this race
+        setRaceWinners(prev => {
+          const newState = {
+            ...prev,
+            [raceClass]: {
+              ...prev[raceClass],
+              [`${bracketType}-${round}-${raceNumber}`]: selectedWinners,
+            },
+          };
+          return newState;
+        });
+      })
+      .catch(error => {
+        // Handle error silently
+      });
   };
 
   const getWinnersForRace = (
@@ -569,18 +697,21 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     raceClass: string,
     rankings: { first: string; second: string; third: string; fourth: string }
   ) => {
-    console.log('Debug - Final Rankings:', {
-      raceClass,
-      rankings,
-    });
+    // Determine the finals race number based on racer count
+    let finalsRaceNumber = 5; // Default for 6 racers
+    if (totalRacers === 9) {
+      finalsRaceNumber = 8; // For 9 racers
+    } else if (totalRacers === 7 || totalRacers === 8) {
+      finalsRaceNumber = 6; // For 7-8 racers
+    }
 
     // First mark the race as completed
     dispatch(
       updateRaceResults({
         raceId: race.id,
         raceClass,
-        raceNumber: needsSecondChanceSecondRound ? 6 : 5, // Update finals race number
-        round: 4, // Finals are round 4
+        raceNumber: finalsRaceNumber,
+        round: 3, // Finals are round 3
         bracketType: 'final',
         winners: [rankings.first, rankings.second],
         losers: [rankings.third, rankings.fourth],
@@ -596,8 +727,8 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
             first: rankings.first!,
             second: rankings.second!,
             third: rankings.third!,
-            fourth: rankings.fourth!
-          }
+            fourth: rankings.fourth!,
+          },
         })
       );
     });
@@ -613,20 +744,21 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
             <h4 className="text-sm font-medium mb-4 text-green-600">Winners Bracket</h4>
             <div className="space-y-12">
               {winnersBrackets.map((round: BracketRound) => (
-                <div
-                  key={`${round.roundNumber}-${round.bracketType}`}
-                  className="bracket-round"
-                >
+                <div key={`${round.roundNumber}-${round.bracketType}`} className="bracket-round">
                   <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
                   <div className="relative space-y-8">
                     {round.races.map((bracketRace: BracketRace) => (
-                      <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
+                      <div
+                        key={`${bracketRace.raceNumber}-${round.bracketType}`}
+                        className="relative"
+                      >
                         <BracketRace
                           race={{
                             ...bracketRace,
                             raceId: race.id,
-                            raceClass: raceClass.raceClass
+                            raceClass: raceClass.raceClass,
                           }}
+                          round={round.roundNumber}
                           onWinnerSelect={(raceNumber, winners, losers) =>
                             handleWinnerSelect(
                               raceClass.raceClass,
@@ -664,7 +796,6 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           <div className="flex-1">
             <h4 className="text-sm font-medium mb-4 text-yellow-600">Second Chance</h4>
             <div className="space-y-12">
-              {/* First Round */}
               {secondChanceRounds.map((round: BracketRound) => {
                 // Only show rounds that should be visible
                 if (round.roundNumber === 2 && !needsSecondChanceSecondRound) {
@@ -672,22 +803,29 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                 }
 
                 return (
-                  <div
-                    key={`${round.roundNumber}-${round.bracketType}`}
-                    className="bracket-round"
-                  >
+                  <div key={`${round.roundNumber}-${round.bracketType}`} className="bracket-round">
                     <h5 className="text-sm font-medium mb-2">
-                      {round.roundNumber === 1 ? 'First Round (Race 4)' : 'Second Round (Race 5)'}
+                      {totalRacers === 9
+                        ? round.roundNumber === 1
+                          ? 'First Round (Race 5)'
+                          : 'Second Round (Race 7)'
+                        : round.roundNumber === 1
+                          ? 'First Round (Race 4)'
+                          : 'Second Round (Race 5)'}
                     </h5>
                     <div className="relative space-y-8">
                       {round.races.map((bracketRace: BracketRace) => (
-                        <div key={`${bracketRace.raceNumber}-${round.bracketType}`} className="relative">
+                        <div
+                          key={`${bracketRace.raceNumber}-${round.bracketType}`}
+                          className="relative"
+                        >
                           <BracketRace
                             race={{
                               ...bracketRace,
                               raceId: race.id,
-                              raceClass: raceClass.raceClass
+                              raceClass: raceClass.raceClass,
                             }}
+                            round={round.roundNumber}
                             onWinnerSelect={(raceNumber, winners, losers) =>
                               handleWinnerSelect(
                                 raceClass.raceClass,
@@ -722,13 +860,12 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           {/* Finals Column */}
           {finalBrackets[0]?.races.length > 0 && (
             <div className="flex-1">
-              <h4 className="text-sm font-medium mb-4 text-blue-600">Finals (Race {needsSecondChanceSecondRound ? '6' : '5'})</h4>
+              <h4 className="text-sm font-medium mb-4 text-blue-600">
+                Finals (Race {totalRacers === 9 ? '8' : totalRacers >= 7 ? '6' : '5'})
+              </h4>
               <div className="space-y-4">
                 {finalBrackets.map((round: BracketRound) => (
-                  <div
-                    key={`${round.roundNumber}-${round.bracketType}`}
-                    className="bracket-round"
-                  >
+                  <div key={`${round.roundNumber}-${round.bracketType}`} className="bracket-round">
                     <div className="relative space-y-1">
                       {round.races.map((bracketRace: BracketRace) => (
                         <BracketRace
@@ -736,8 +873,9 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                           race={{
                             ...bracketRace,
                             raceId: race.id,
-                            raceClass: raceClass.raceClass
+                            raceClass: raceClass.raceClass,
                           }}
+                          round={round.roundNumber}
                           onWinnerSelect={(raceNumber, winners, losers) =>
                             handleWinnerSelect(
                               raceClass.raceClass,
@@ -772,51 +910,34 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
   );
 };
 
-const areAllBracketsCompleted = (brackets: BracketRound[], raceClasses: Array<{ raceClass: string }>) => {
-  console.log('Checking bracket completion:', {
-    brackets,
-    raceClasses
-  });
-
+const areAllBracketsCompleted = (
+  brackets: BracketRound[],
+  raceClasses: Array<{ raceClass: string }>
+) => {
   return raceClasses.every(({ raceClass }) => {
-    console.log('Checking class:', raceClass);
-    
     // Get all rounds for this race class
     const classBrackets = brackets.filter(b => b.raceClass === raceClass);
-    console.log('Class brackets:', classBrackets);
 
     // Check if we have any brackets for this class
     if (classBrackets.length === 0) {
-      console.log('No brackets found for class:', raceClass);
       return false;
     }
 
     // First check if finals exist and are completed
     const finalRound = classBrackets.find(round => round.bracketType === 'final');
     const finalRace = finalRound?.races[0];
-    
-    console.log('Final round check:', {
-      finalRound,
-      finalRace,
-      status: finalRace?.status,
-      hasRankings: !!finalRace?.finalRankings
-    });
 
     if (!finalRace || finalRace.status !== 'completed' || !finalRace.finalRankings) {
-      console.log('Finals not complete for class:', raceClass);
       return false;
     }
 
     // Check if all races in all rounds are completed
     const allRoundsComplete = classBrackets.every(round => {
-      console.log('Checking round:', round.roundNumber, 'type:', round.bracketType);
       return round.races.every(race => {
-        console.log('Race', race.raceNumber, 'status:', race.status);
         return race.status === 'completed';
       });
     });
 
-    console.log('Class completion status:', raceClass, allRoundsComplete);
     return allRoundsComplete;
   });
 };
@@ -831,13 +952,20 @@ const Bracket = () => {
     activeRace?.raceClasses[0]?.raceClass || ''
   );
 
-  const brackets = useSelector((state: RootState) => {
-    const bracketData = state.brackets.entities[activeRace?.id || ''] || {};
-    return Object.values(bracketData).flat();
-  });
+  // Memoized selector for brackets
+  const selectAllBracketsByRaceId = createSelector(
+    [(state: RootState) => state.brackets.entities, (state: RootState, raceId: string) => raceId],
+    (entities, raceId) => {
+      const bracketData = entities[raceId] || {};
+      return Object.values(bracketData).flat();
+    }
+  );
+
+  const brackets = useSelector((state: RootState) =>
+    selectAllBracketsByRaceId(state, activeRace?.id || '')
+  );
 
   useEffect(() => {
-    console.log('Loading initial data...');
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());
     dispatch(loadBracketsFromStorage());
@@ -884,56 +1012,56 @@ const Bracket = () => {
 
   const handleFinishRace = () => {
     if (!activeRace) return;
-    
-    if (window.confirm('Are you sure you want to finish this race? This action cannot be undone.')) {
-      console.log('Finishing race:', {
-        raceId: activeRace.id,
-        currentStatus: activeRace.status,
-        brackets
-      });
 
+    if (
+      window.confirm('Are you sure you want to finish this race? This action cannot be undone.')
+    ) {
       // First, ensure all final rankings are saved for each class
       const savePromises = activeRace.raceClasses.map(async ({ raceClass }) => {
-        const finalRound = brackets.find(round => 
-          round.bracketType === 'final' && round.raceClass === raceClass
+        const finalRound = brackets.find(
+          round => round.bracketType === 'final' && round.raceClass === raceClass
         );
-        
+
         if (finalRound?.races?.[0]?.finalRankings) {
           const finalRace = finalRound.races[0];
           const rankings = finalRace.finalRankings!;
-          console.log('Saving final rankings for class:', raceClass, rankings);
-          
-          await dispatch(updateFinalRankings({
-            raceId: activeRace.id,
-            raceClass,
-            rankings: {
-              first: rankings.first!,
-              second: rankings.second!,
-              third: rankings.third!,
-              fourth: rankings.fourth!
-            }
-          }));
+
+          await dispatch(
+            updateFinalRankings({
+              raceId: activeRace.id,
+              raceClass,
+              rankings: {
+                first: rankings.first!,
+                second: rankings.second!,
+                third: rankings.third!,
+                fourth: rankings.fourth!,
+              },
+            })
+          );
         }
       });
 
       // After all rankings are saved, update race status
       Promise.all(savePromises).then(() => {
-        console.log('All rankings saved, updating race status to completed');
-        dispatch(updateRaceStatus({ 
-          raceId: activeRace.id, 
-          status: 'completed' 
-        }));
+        dispatch(
+          updateRaceStatus({
+            raceId: activeRace.id,
+            status: 'completed',
+          })
+        );
 
         // Also update each race class status
         activeRace.raceClasses.forEach(({ raceClass }) => {
-          dispatch(updateRaceClass({
-            raceId: activeRace.id,
-            raceClass,
-            updates: {
+          dispatch(
+            updateRaceClass({
+              raceId: activeRace.id,
               raceClass,
-              status: RaceClassStatus.Completed
-            }
-          }));
+              updates: {
+                raceClass,
+                status: RaceClassStatus.Completed,
+              },
+            })
+          );
         });
       });
     }
@@ -942,9 +1070,9 @@ const Bracket = () => {
   // Add check for no races
   if (races.length === 0) {
     return (
-      <NoRaceState 
-        title="Brackets" 
-        description="Create a race in Race Management to start creating brackets." 
+      <NoRaceState
+        title="Brackets"
+        description="Create a race in Race Management to start creating brackets."
       />
     );
   }
@@ -957,12 +1085,7 @@ const Bracket = () => {
             <div className="flex justify-between items-center p-6">
               <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-2" 
-                  onClick={handleResetBrackets}
-                >
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
                   <RefreshCw className="h-4 w-4" />
                   Reset All Brackets
                 </Button>
@@ -971,7 +1094,9 @@ const Bracket = () => {
                   size="sm"
                   className="gap-2"
                   onClick={handleFinishRace}
-                  disabled={!activeRace || !areAllBracketsCompleted(brackets, activeRace.raceClasses)}
+                  disabled={
+                    !activeRace || !areAllBracketsCompleted(brackets, activeRace.raceClasses)
+                  }
                 >
                   <Trophy className="h-4 w-4" />
                   Finish Race
@@ -986,11 +1111,16 @@ const Bracket = () => {
                     onTabChange={setSelectedClass}
                   />
                 )}
-                {activeRace && activeRace.raceClasses.map(raceClass => (
-                  <TabsContent key={raceClass.raceClass} value={raceClass.raceClass} className="mt-4 space-y-6">
-                    <BracketContent race={activeRace} selectedClass={raceClass.raceClass} />
-                  </TabsContent>
-                ))}
+                {activeRace &&
+                  activeRace.raceClasses.map(raceClass => (
+                    <TabsContent
+                      key={raceClass.raceClass}
+                      value={raceClass.raceClass}
+                      className="mt-4 space-y-6"
+                    >
+                      <BracketContent race={activeRace} selectedClass={raceClass.raceClass} />
+                    </TabsContent>
+                  ))}
               </Tabs>
             </CardContent>
           </div>
