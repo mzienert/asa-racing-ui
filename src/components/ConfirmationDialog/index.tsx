@@ -42,7 +42,7 @@ const ConfirmationDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction 
+          <AlertDialogAction
             onClick={onConfirm}
             className={variant === 'green' ? 'bg-green-600 hover:bg-green-700' : ''}
           >
@@ -54,4 +54,4 @@ const ConfirmationDialog = ({
   );
 };
 
-export default ConfirmationDialog; 
+export default ConfirmationDialog;

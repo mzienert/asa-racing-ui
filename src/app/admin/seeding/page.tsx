@@ -91,9 +91,9 @@ const Racers = () => {
   // Add check for no races
   if (races.length === 0) {
     return (
-      <NoRaceState 
-        title="Race Seeding" 
-        description="Create a race in Race Management to start seeding." 
+      <NoRaceState
+        title="Race Seeding"
+        description="Create a race in Race Management to start seeding."
       />
     );
   }

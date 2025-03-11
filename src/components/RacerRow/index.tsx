@@ -34,16 +34,10 @@ export const RacerRow = ({
   return (
     <div
       className={`flex items-center justify-between p-3 rounded-md transition-colors
-        ${
-          editingRacer?.id === racer.id
-            ? 'bg-primary/5 border border-primary/20'
-            : 'bg-muted/30'
-        }`}
+        ${editingRacer?.id === racer.id ? 'bg-primary/5 border border-primary/20' : 'bg-muted/30'}`}
     >
       <div className="flex items-center gap-4">
-        <span className="font-medium text-primary">
-          #{racer.bibNumber}
-        </span>
+        <span className="font-medium text-primary">#{racer.bibNumber}</span>
         <span>{racer.name}</span>
       </div>
       {raceClassStatus === RaceClassStatus.Created && (
@@ -83,4 +77,4 @@ export const RacerRow = ({
       />
     </div>
   );
-}; 
+};
