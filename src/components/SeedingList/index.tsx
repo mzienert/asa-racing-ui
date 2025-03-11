@@ -7,16 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
 import { createBracket } from '@/store/features/bracketSlice';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../ui/alert-dialog';
+import ConfirmationDialog from '../ConfirmationDialog';
 import { useState } from 'react';
 
 interface SeedingListProps {
@@ -184,21 +175,16 @@ const SeedingList = ({
         </div>
       )}
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Complete Race Seeding</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to complete seeding? Racer times will be locked and the race
-              will be set to Racing. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCompleteSeeding}>Complete Seeding</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        title="Complete Race Seeding"
+        description="Are you sure you want to complete seeding? Racer times will be locked and the race will be set to Racing. This action cannot be undone."
+        confirmText="Complete Seeding"
+        onCancel={() => setShowConfirmDialog(false)}
+        onConfirm={handleCompleteSeeding}
+        variant="green"
+      />
     </div>
   );
 };

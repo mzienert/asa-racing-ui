@@ -19,6 +19,7 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   onCancel: () => void;
   onConfirm: () => void;
+  variant?: 'default' | 'green';
 }
 
 const ConfirmationDialog = ({
@@ -30,6 +31,7 @@ const ConfirmationDialog = ({
   confirmText = 'Confirm',
   onCancel,
   onConfirm,
+  variant = 'default',
 }: ConfirmationDialogProps) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -40,7 +42,12 @@ const ConfirmationDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{confirmText}</AlertDialogAction>
+          <AlertDialogAction 
+            onClick={onConfirm}
+            className={variant === 'green' ? 'bg-green-600 hover:bg-green-700' : ''}
+          >
+            {confirmText}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

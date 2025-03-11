@@ -38,6 +38,7 @@ import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NoRaceState from '@/components/NoRaceState';
 import { Racer } from '@/store/features/racersSlice';
 import { createSelector } from '@reduxjs/toolkit';
+import ConfirmationDialog from '@/components/ConfirmationDialog';
 
 interface BracketContentProps {
   race: Race;
@@ -114,6 +115,10 @@ const BracketRace = ({
   const isSevenRacersRace4 = race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
   const isSevenRacersRace5 = race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
   const isSecondChanceTwoRacers = race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
+  const isNineRacersSecondChanceFirstRound = 
+    totalRacers === 9 && race.bracketType === 'losers' && race.raceNumber === 7;
+  const isNineRacersSecondChanceSecondRound = 
+    totalRacers === 9 && race.bracketType === 'losers' && race.raceNumber === 9;
 
   // Update selected racers when winners prop changes
   useEffect(() => {
@@ -174,10 +179,20 @@ const BracketRace = ({
     const isSelected = selectedRacers.includes(racerId);
 
     // Handle all special cases
-    if (isNineRacersSecondRound || isNineRacersThirdRound) {
+    if (isNineRacersSecondRound || (isNineRacersThirdRound && race.raceNumber !== 6)) {
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 2) {
+        setSelectedRacers([...selectedRacers, racerId]);
+      }
+      return;
+    }
+
+    // Special case for Race 6 in 9-racer bracket
+    if (totalRacers === 9 && race.raceNumber === 6) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 3) {
         setSelectedRacers([...selectedRacers, racerId]);
       }
       return;
@@ -197,6 +212,24 @@ const BracketRace = ({
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 2) {
         setSelectedRacers([...selectedRacers, racerId]);
+      }
+      return;
+    }
+
+    if (isNineRacersSecondChanceFirstRound) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 2) {
+        setSelectedRacers([...selectedRacers, racerId]);
+      }
+      return;
+    }
+
+    if (isNineRacersSecondChanceSecondRound) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
       }
       return;
     }
@@ -354,16 +387,31 @@ const BracketRace = ({
       return;
     }
 
-    // Validate selected racers count based on race type
-    const isValid = 
-      (isNineRacersSecondRound && selectedRacers.length === 2) ||
-      (isNineRacersThirdRound && selectedRacers.length === 2) ||
-      (isSixRacersRace4 && selectedRacers.length === 1) ||
-      (isSevenRacersRace4 && selectedRacers.length === 2) ||
-      ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && selectedRacers.length === 1) ||
-      (!isSixRacersRace4 && !isSevenRacersRace4 && !isSevenRacersRace5 && !isSecondChanceTwoRacers && selectedRacers.length === 2);
+    // Special case for Race 6 in 9-racer bracket
+    if (totalRacers === 9 && race.raceNumber === 6) {
+      if (selectedRacers.length !== 3) {
+        return;
+      }
+    } else {
+      // Validate selected racers count based on race type
+      const isValid = 
+        (isNineRacersSecondRound && selectedRacers.length === 2) ||
+        (isNineRacersThirdRound && selectedRacers.length === 2) ||
+        (isSixRacersRace4 && selectedRacers.length === 1) ||
+        (isSevenRacersRace4 && selectedRacers.length === 2) ||
+        ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && selectedRacers.length === 1) ||
+        (!isSixRacersRace4 && !isSevenRacersRace4 && !isSevenRacersRace5 && !isSecondChanceTwoRacers && selectedRacers.length === 2);
 
-    if (!isValid) {
+      if (!isValid) {
+        return;
+      }
+    }
+
+    if (isNineRacersSecondChanceFirstRound && selectedRacers.length !== 2) {
+      return;
+    }
+
+    if (isNineRacersSecondChanceSecondRound && selectedRacers.length !== 1) {
       return;
     }
 
@@ -398,10 +446,13 @@ const BracketRace = ({
             {race.bracketType === 'losers' && ' (Second Chance)'}
             {race.bracketType === 'final' && ' (Finals)'}
             {isNineRacersSecondRound && ' (Select Two Winners)'}
-            {isNineRacersThirdRound && ' (Select Two Winners)'}
+            {isNineRacersThirdRound && race.raceNumber !== 6 && ' (Select Two Winners)'}
+            {totalRacers === 9 && race.raceNumber === 6 && ' (Select Three Winners)'}
             {isSixRacersRace4 && ' (Select One Winner)'}
             {isSevenRacersRace4 && ' (Select Two Winners)'}
             {(isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && ' (Select One Winner)'}
+            {isNineRacersSecondChanceFirstRound && ' (Select Two Winners)'}
+            {isNineRacersSecondChanceSecondRound && ' (Select One Winner)'}
           </span>
         </div>
         {selectedRacers.length > 0 && race.status !== 'completed' && (
@@ -591,31 +642,38 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     selectedWinners: string[],
     selectedLosers: string[]
   ) => {
-    // Validate the winners and losers based on race type
-    const isSevenRacersRace4 = raceNumber === 4 && bracketType === 'losers' && totalRacers === 7;
-    const isSevenRacersRace5 = raceNumber === 5 && bracketType === 'losers' && totalRacers === 7;
-    const isSecondChanceTwoRacers =
-      bracketType === 'losers' && selectedWinners.length + selectedLosers.length === 2;
+    // Special case for Race 6 in 9-racer bracket
+    if (totalRacers === 9 && raceNumber === 6) {
+      if (selectedWinners.length !== 3) {
+        return;
+      }
+    } else {
+      // Validate the winners and losers based on race type
+      const isSevenRacersRace4 = raceNumber === 4 && bracketType === 'losers' && totalRacers === 7;
+      const isSevenRacersRace5 = raceNumber === 5 && bracketType === 'losers' && totalRacers === 7;
+      const isSecondChanceTwoRacers =
+        bracketType === 'losers' && selectedWinners.length + selectedLosers.length === 2;
 
-    if (isSevenRacersRace4 && selectedWinners.length !== 2) {
-      return;
-    }
+      if (isSevenRacersRace4 && selectedWinners.length !== 2) {
+        return;
+      }
 
-    if (
-      (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
-      selectedWinners.length !== 1
-    ) {
-      return;
-    }
+      if (
+        (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+        selectedWinners.length !== 1
+      ) {
+        return;
+      }
 
-    if (
-      !isSevenRacersRace4 &&
-      !isSevenRacersRace5 &&
-      !isSecondChanceTwoRacers &&
-      bracketType !== 'final' &&
-      selectedWinners.length !== 2
-    ) {
-      return;
+      if (
+        !isSevenRacersRace4 &&
+        !isSevenRacersRace5 &&
+        !isSecondChanceTwoRacers &&
+        bracketType !== 'final' &&
+        selectedWinners.length !== 2
+      ) {
+        return;
+      }
     }
 
     // Find the current race in the brackets
@@ -926,6 +984,7 @@ const Bracket = () => {
   const [selectedClass, setSelectedClass] = useState<string>(
     activeRace?.raceClasses[0]?.raceClass || ''
   );
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   // Memoized selector for brackets
   const selectAllBracketsByRaceId = createSelector(
@@ -963,26 +1022,25 @@ const Bracket = () => {
   }, [activeRace?.id, selectedRaceId, activeRace?.raceClasses]);
 
   const handleResetBrackets = () => {
-    if (window.confirm('Are you sure you want to reset all brackets? This cannot be undone.')) {
-      // First reset brackets
-      dispatch(resetBrackets());
+    // First reset brackets
+    dispatch(resetBrackets());
 
-      // Then update each race class status back to seeding
-      if (activeRace) {
-        activeRace.raceClasses.forEach(raceClass => {
-          dispatch(
-            updateRaceClass({
-              raceId: activeRace.id,
+    // Then update each race class status back to seeding
+    if (activeRace) {
+      activeRace.raceClasses.forEach(raceClass => {
+        dispatch(
+          updateRaceClass({
+            raceId: activeRace.id,
+            raceClass: raceClass.raceClass,
+            updates: {
               raceClass: raceClass.raceClass,
-              updates: {
-                raceClass: raceClass.raceClass,
-                status: RaceClassStatus.Seeding,
-              },
-            })
-          );
-        });
-      }
+              status: RaceClassStatus.Seeding,
+            },
+          })
+        );
+      });
     }
+    setShowResetDialog(false);
   };
 
   const handleFinishRace = () => {
@@ -1060,7 +1118,7 @@ const Bracket = () => {
             <div className="flex justify-between items-center p-6">
               <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={handleResetBrackets}>
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowResetDialog(true)}>
                   <RefreshCw className="h-4 w-4" />
                   Reset All Brackets
                 </Button>
@@ -1080,12 +1138,10 @@ const Bracket = () => {
             </div>
             <CardContent>
               <Tabs value={selectedClass} className="w-full">
-                {activeRace && (
-                  <ClassTabsHeader
-                    raceClasses={activeRace.raceClasses}
-                    onTabChange={setSelectedClass}
-                  />
-                )}
+                <ClassTabsHeader
+                  raceClasses={activeRace?.raceClasses || []}
+                  onTabChange={setSelectedClass}
+                />
                 {activeRace &&
                   activeRace.raceClasses.map(raceClass => (
                     <TabsContent
@@ -1101,6 +1157,16 @@ const Bracket = () => {
           </div>
         </Card>
       </div>
+      <ConfirmationDialog
+        open={showResetDialog}
+        onOpenChange={setShowResetDialog}
+        title="Reset All Brackets"
+        description="Are you sure you want to reset all brackets? This action cannot be undone."
+        onCancel={() => setShowResetDialog(false)}
+        onConfirm={handleResetBrackets}
+        cancelText="Cancel"
+        confirmText="Reset Brackets"
+      />
     </div>
   );
 };
