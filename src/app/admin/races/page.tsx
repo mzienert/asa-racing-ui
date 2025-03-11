@@ -16,7 +16,6 @@ import RaceListContainer from '@/components/RaceListContainer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import NoRaceState from '@/components/NoRaceState';
 
 export interface RaceDetailsProps {
   race: {

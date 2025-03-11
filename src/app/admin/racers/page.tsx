@@ -17,7 +17,6 @@ import {
 } from '@/store/features/racesSlice';
 import { Users } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { getActiveRaces } from '@/helpers/racers';
 import NoRaceState from '@/components/NoRaceState';
 import RaceTabsHeader from '@/components/RaceTabsHeader';
 import PageHeader from '@/components/PageHeader';
@@ -66,13 +65,11 @@ const RaceContent = ({ race }: RaceContentProps) => {
 
 const Racers = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
+  const hasRace = useSelector(selectHasActiveRace);
   const activeRace = useSelector(selectActiveRace);
   const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
   
-  const activeRaces = getActiveRaces(races);
-
   useEffect(() => {
     dispatch(loadRacesFromStorage());
     dispatch(loadRacersFromStorage());

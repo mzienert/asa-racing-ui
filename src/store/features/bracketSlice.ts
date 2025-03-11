@@ -89,7 +89,7 @@ const getBracketsFromStorage = (): BracketState => {
     }
 
     return initialState;
-  } catch (e) {
+  } catch {
     return initialState;
   }
 };
@@ -97,22 +97,6 @@ const getBracketsFromStorage = (): BracketState => {
 export const loadBracketsFromStorage = createAsyncThunk('bracket/load', async () => {
   return getBracketsFromStorage();
 });
-
-// Helper function to generate tournament bracket seeding order
-const generateBracketSeeds = (count: number): number[] => {
-  // Find the next power of 2 that can accommodate all racers
-  const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(Math.min(count, 32))));
-  const seeds: number[] = [];
-
-  // Generate the seeding pattern for a full bracket
-  for (let i = 1; i <= nextPowerOf2 / 2; i++) {
-    seeds.push(i);
-    seeds.push(nextPowerOf2 + 1 - i);
-  }
-
-  // Return only the number of seeds we need
-  return seeds.slice(0, count);
-};
 
 // Helper function to determine optimal race group sizes
 const determineRaceGroups = (numRacers: number): number[] => {
@@ -575,25 +559,6 @@ const getRacersByIds = (racers: Racer[], ids: string[]): Racer[] => {
   return ids.map(id => racers.find(r => r.id === id)).filter((r): r is Racer => r !== undefined);
 };
 
-// Helper function to create next round race
-const createNextRoundRace = (
-  roundNumber: number,
-  raceNumber: number,
-  position: number,
-  bracketType: 'winners' | 'losers' | 'final',
-  raceId: string,
-  raceClass: string
-): BracketRace => ({
-  raceNumber,
-  racers: [],
-  round: roundNumber,
-  bracketType,
-  status: 'pending',
-  position,
-  raceId,
-  raceClass,
-});
-
 // Helper to populate next round races
 export const populateNextRoundRaces = (
   rounds: BracketRound[],
@@ -619,12 +584,6 @@ export const populateNextRoundRaces = (
       totalRacers += race.racers.length;
     });
   }
-
-  const raceNumbers = calculateRaceNumbers(
-    firstRoundWinners?.races.length || 2,
-    0, // Not needed for 9 racers
-    totalRacers
-  );
 
   if (totalRacers === 9) {
     if (bracketType === 'winners') {

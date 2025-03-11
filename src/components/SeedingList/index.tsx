@@ -98,7 +98,7 @@ const SeedingList = ({
         raceClasses: updatedRaceClasses,
       };
 
-      const result = await dispatch(updatePersistedRace(updatedRace)).unwrap();
+      await dispatch(updatePersistedRace(updatedRace)).unwrap();
 
       toast.success('Starting positions assigned and bracket created successfully');
     } catch (error) {

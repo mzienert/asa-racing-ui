@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { generateFullBracketStructure, populateNextRoundRaces, updateRaceResults, BracketRound, BracketRace } from '../features/bracketSlice';
+import { generateFullBracketStructure, populateNextRoundRaces, BracketRound } from '../features/bracketSlice';
 import { Racer } from '../features/racersSlice';
 
 describe('Bracket Generation', () => {

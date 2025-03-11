@@ -158,7 +158,7 @@ export const updateRaceClass = createAsyncThunk(
 
 export const updateRaceStatus = createAsyncThunk(
   'races/updateStatus',
-  async ({ raceId, status }: { raceId: string; status: 'active' | 'completed' }) => {
+  async ({ raceId, status }: { raceId: string; status: RaceStatus }) => {
     return { raceId, status };
   }
 );

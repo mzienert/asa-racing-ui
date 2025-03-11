@@ -15,6 +15,7 @@ import {
   updateRaceClass,
   RaceClassStatus,
   updateRaceStatus,
+  RaceStatus,
 } from '@/store/features/racesSlice';
 import { loadRacersFromStorage } from '@/store/features/racersSlice';
 import {
@@ -32,7 +33,6 @@ import type { Race } from '@/store/features/racesSlice';
 import type { BracketRace, BracketRound } from '@/store/features/bracketSlice';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { RaceStatus } from '@/store/features/bracketSlice';
 import { Circle, RefreshCw } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NoRaceState from '@/components/NoRaceState';
@@ -77,10 +77,10 @@ interface BracketRaceProps {
 }
 
 const RaceStatusIndicator = ({ status }: { status: RaceStatus }) => {
-  const statusColors = {
-    pending: 'text-gray-400',
-    in_progress: 'text-yellow-500',
-    completed: 'text-green-500',
+  const statusColors: Record<RaceStatus, string> = {
+    [RaceStatus.In_Progress]: 'text-yellow-500',
+    [RaceStatus.Completed]: 'text-green-500',
+    [RaceStatus.Configuring]: 'text-gray-400'
   };
 
   return <Circle className={cn('h-4 w-4', statusColors[status])} />;
@@ -109,15 +109,20 @@ const BracketRace = ({
   });
 
   // Special case flags
-  const isNineRacersSecondRound = totalRacers === 9 && round === 2 && race.bracketType === 'winners';
+  const isNineRacersSecondRound =
+    totalRacers === 9 && round === 2 && race.bracketType === 'winners';
   const isNineRacersThirdRound = totalRacers === 9 && round === 3 && race.bracketType === 'winners';
-  const isSixRacersRace4 = race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 2;
-  const isSevenRacersRace4 = race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
-  const isSevenRacersRace5 = race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
-  const isSecondChanceTwoRacers = race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
-  const isNineRacersSecondChanceFirstRound = 
+  const isSixRacersRace4 =
+    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 2;
+  const isSevenRacersRace4 =
+    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
+  const isSevenRacersRace5 =
+    race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
+  const isSecondChanceTwoRacers =
+    race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
+  const isNineRacersSecondChanceFirstRound =
     totalRacers === 9 && race.bracketType === 'losers' && race.raceNumber === 7;
-  const isNineRacersSecondChanceSecondRound = 
+  const isNineRacersSecondChanceSecondRound =
     totalRacers === 9 && race.bracketType === 'losers' && race.raceNumber === 9;
 
   // Update selected racers when winners prop changes
@@ -141,7 +146,6 @@ const BracketRace = ({
     // For finals, handle rankings differently
     if (race.bracketType === 'final') {
       const isSelected = selectedRacers.includes(racerId);
-      const currentRanking = rankings[racerId];
 
       // If already selected, remove from rankings and selected racers
       if (isSelected) {
@@ -344,7 +348,7 @@ const BracketRace = ({
                 first: validRankings.first!,
                 second: validRankings.second!,
                 third: validRankings.third!,
-                fourth: validRankings.fourth!,
+                fourth: validRankings.fourth || validRankings.third!,
               });
             }
           } else {
@@ -380,7 +384,12 @@ const BracketRace = ({
       }
 
       if (onFinalRankings) {
-        onFinalRankings(finalRankings as any);
+        onFinalRankings({
+          first: finalRankings.first!,
+          second: finalRankings.second!,
+          third: finalRankings.third!,
+          fourth: finalRankings.fourth || finalRankings.third!,
+        });
       }
       setSelectedRacers([]);
       setRankings({});
@@ -394,13 +403,18 @@ const BracketRace = ({
       }
     } else {
       // Validate selected racers count based on race type
-      const isValid = 
+      const isValid =
         (isNineRacersSecondRound && selectedRacers.length === 2) ||
         (isNineRacersThirdRound && selectedRacers.length === 2) ||
         (isSixRacersRace4 && selectedRacers.length === 1) ||
         (isSevenRacersRace4 && selectedRacers.length === 2) ||
-        ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && selectedRacers.length === 1) ||
-        (!isSixRacersRace4 && !isSevenRacersRace4 && !isSevenRacersRace5 && !isSecondChanceTwoRacers && selectedRacers.length === 2);
+        ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+          selectedRacers.length === 1) ||
+        (!isSixRacersRace4 &&
+          !isSevenRacersRace4 &&
+          !isSevenRacersRace5 &&
+          !isSecondChanceTwoRacers &&
+          selectedRacers.length === 2);
 
       if (!isValid) {
         return;
@@ -439,7 +453,7 @@ const BracketRace = ({
     >
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2">
-          <RaceStatusIndicator status={race.status} />
+          <RaceStatusIndicator status={race.status as unknown as RaceStatus} />
           <span className="text-sm font-medium">
             Race {race.raceNumber}
             {race.bracketType === 'winners' && ' (Winners Bracket)'}
@@ -450,7 +464,8 @@ const BracketRace = ({
             {totalRacers === 9 && race.raceNumber === 6 && ' (Select Three Winners)'}
             {isSixRacersRace4 && ' (Select One Winner)'}
             {isSevenRacersRace4 && ' (Select Two Winners)'}
-            {(isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && ' (Select One Winner)'}
+            {(isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+              ' (Select One Winner)'}
             {isNineRacersSecondChanceFirstRound && ' (Select Two Winners)'}
             {isNineRacersSecondChanceSecondRound && ' (Select One Winner)'}
           </span>
@@ -676,13 +691,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
       }
     }
 
-    // Find the current race in the brackets
-    const currentRound = brackets.find(
-      b => b.roundNumber === round && b.bracketType === bracketType
-    );
-    const currentRace = currentRound?.races.find(r => r.raceNumber === raceNumber);
-
-    // Dispatch the race results update
+    // Dispatch the race results update directly without checking currentRound
     dispatch(
       updateRaceResults({
         raceId: race.id,
@@ -708,8 +717,8 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           return newState;
         });
       })
-      .catch(error => {
-        // Handle error silently
+      .catch(() => {
+        // Silently handle error - could add error logging here if needed
       });
   };
 
@@ -926,9 +935,12 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                             round.bracketType,
                             bracketRace.status
                           )}
-                          onFinalRankings={rankings =>
-                            handleFinalRankings(raceClass.raceClass, rankings)
-                          }
+                          onFinalRankings={(rankings: {
+                            first: string;
+                            second: string;
+                            third: string;
+                            fourth: string;
+                          }) => handleFinalRankings(raceClass.raceClass, rankings)}
                         />
                       ))}
                     </div>
@@ -1079,7 +1091,7 @@ const Bracket = () => {
         dispatch(
           updateRaceStatus({
             raceId: activeRace.id,
-            status: 'completed',
+            status: RaceStatus.Completed,
           })
         );
 
@@ -1118,7 +1130,12 @@ const Bracket = () => {
             <div className="flex justify-between items-center p-6">
               <PageHeader icon={Users} title="Brackets" description="Manage your brackets here." />
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowResetDialog(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowResetDialog(true)}
+                >
                   <RefreshCw className="h-4 w-4" />
                   Reset All Brackets
                 </Button>

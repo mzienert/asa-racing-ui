@@ -31,8 +31,8 @@ export const RaceTabsHeader = ({ filterStatus = false, onTabChange }: RaceTabsHe
     if (b.id === activeRace?.id) return 1;
     
     // Then sort by status (completed last)
-    if (a.status === 'completed' && b.status !== 'completed') return 1;
-    if (a.status !== 'completed' && b.status === 'completed') return -1;
+    if (a.status === ('completed' as RaceStatus) && b.status !== ('completed' as RaceStatus)) return 1;
+    if (a.status !== ('completed' as RaceStatus) && b.status === ('completed' as RaceStatus)) return -1;
     
     // Finally sort by name
     return a.name.localeCompare(b.name);

@@ -17,7 +17,6 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import RaceTabsHeader from '@/components/RaceTabsHeader';
 import NoRaceState from '@/components/NoRaceState';
 import PageHeader from '@/components/PageHeader';
-import { getActiveRaces } from '@/helpers/racers';
 import { RootState } from '@/store/store';
 import type { Race } from '@/store/features/racesSlice';
 import SeedingContainer from '@/components/SeedingContainer';
@@ -82,7 +81,7 @@ const Racers = () => {
     if (races.length > 0 && !hasRace) {
       dispatch(setCurrentRace(races[0].id));
     }
-  }, [dispatch, races.length, hasRace]);
+  }, [dispatch, races, hasRace]);
 
   useEffect(() => {
     setSelectedRaceId(activeRace?.id);
