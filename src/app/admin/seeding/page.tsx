@@ -70,7 +70,6 @@ const Racers = () => {
   const hasRace = useSelector(selectHasActiveRace);
   const races = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-  const activeRaces = getActiveRaces(races);
   const [selectedRaceId, setSelectedRaceId] = useState<string | undefined>(activeRace?.id);
 
   useEffect(() => {
@@ -99,7 +98,8 @@ const Racers = () => {
     );
   }
 
-  if (!hasRace) {
+  // Only check if we have a currentRaceId
+  if (!races.find(race => race.id === selectedRaceId)) {
     return <NoRaceState title="Race Seeding" description="Seed your races here." />;
   }
 
@@ -112,7 +112,7 @@ const Racers = () => {
             <CardContent>
               <Tabs value={selectedRaceId} className="w-full">
                 <RaceTabsHeader selectedRaceId={selectedRaceId} onTabChange={setSelectedRaceId} />
-                {activeRaces.map(race => (
+                {races.map(race => (
                   <SeedingContent key={race.id} race={race} />
                 ))}
               </Tabs>

@@ -53,30 +53,41 @@ const initialState: BracketState = {
 
 const getBracketsFromStorage = (): BracketState => {
   try {
+    console.log('Attempting to get brackets from storage');
     const stored = localStorage.getItem('brackets');
-    if (!stored) return initialState;
+    console.log('Raw stored brackets:', stored);
+    
+    if (!stored) {
+      console.log('No brackets found in storage, returning initial state');
+      return initialState;
+    }
     
     const data = JSON.parse(stored);
+    console.log('Parsed brackets data:', data);
     
     // Handle old format where data was directly stored
     if (data && typeof data === 'object' && !data.entities) {
+      console.log('Found old format data:', data);
       const oldData = { ...data };
       // Remove metadata fields if they exist
       delete oldData.loading;
       delete oldData.error;
       // Only include if there's actual bracket data
       if (Object.keys(oldData).length > 0) {
-        return {
+        const newState = {
           entities: oldData,
           loading: false,
           error: null
         };
+        console.log('Converted old format to new state:', newState);
+        return newState;
       }
       return initialState;
     }
 
     // Handle new format
     if (data.entities && Object.keys(data.entities).length > 0) {
+      console.log('Found valid entities format:', data);
       return {
         entities: data.entities,
         loading: false,
@@ -84,6 +95,7 @@ const getBracketsFromStorage = (): BracketState => {
       };
     }
     
+    console.log('No valid data format found, returning initial state');
     return initialState;
   } catch (e) {
     console.error('Error parsing brackets from localStorage:', e);
@@ -98,7 +110,7 @@ export const loadBracketsFromStorage = createAsyncThunk('bracket/load', async ()
 // Helper function to generate tournament bracket seeding order
 const generateBracketSeeds = (count: number): number[] => {
   // Find the next power of 2 that can accommodate all racers
-  const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(count)));
+  const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(Math.min(count, 32))));
   const seeds: number[] = [];
 
   // Generate the seeding pattern for a full bracket
@@ -111,41 +123,103 @@ const generateBracketSeeds = (count: number): number[] => {
   return seeds.slice(0, count);
 };
 
-// Helper function to group racers into races (4 racers per race)
+// Helper function to determine optimal race group sizes
+const determineRaceGroups = (numRacers: number): number[] => {
+  // Special cases for 8 or fewer racers
+  if (numRacers <= 4) return [numRacers];
+  if (numRacers === 5) return [3, 2];
+  if (numRacers === 6) return [3, 3];
+  if (numRacers === 7) return [4, 3];
+  if (numRacers === 8) return [4, 4];
+
+  // For larger numbers, we'll use similar principles
+  const groups: number[] = [];
+  let remaining = numRacers;
+
+  // First, create as many groups of 4 as possible
+  while (remaining >= 4) {
+    groups.push(4);
+    remaining -= 4;
+  }
+
+  // Handle the remainder
+  if (remaining > 0) {
+    const lastFullGroup = groups[groups.length - 1];
+    
+    // If we have 3 remaining, just add a group of 3
+    if (remaining === 3) {
+      groups.push(3);
+    }
+    // If we have 2 remaining and a previous group of 4,
+    // split into two groups of 3
+    else if (remaining === 2 && lastFullGroup === 4) {
+      groups[groups.length - 1] = 3;
+      groups.push(3);
+    }
+    // If we have 1 remaining, try to balance groups
+    else if (remaining === 1 && groups.length > 0) {
+      // Remove last group of 4 and create two groups of 3 and 2
+      groups[groups.length - 1] = 3;
+      groups.push(2);
+    }
+    // If we can't balance better, just add the remainder
+    else {
+      groups.push(remaining);
+    }
+  }
+
+  return groups;
+};
+
+// Helper function to group racers into races (prioritizing optimal groups)
 const groupIntoRaces = (racers: Racer[]): BracketRace[] => {
   const races: BracketRace[] = [];
-  const seeds = generateBracketSeeds(racers.length);
-
+  
   // Sort racers by their starting position
   const sortedRacers = [...racers].sort(
     (a, b) => (a.seedData?.startingPosition || 0) - (b.seedData?.startingPosition || 0)
   );
 
-  // Group into races of 4
-  for (let i = 0; i < seeds.length; i += 4) {
-    const raceRacers = seeds
-      .slice(i, i + 4)
-      .map(seed => {
-        const index = seed - 1;
-        return index < sortedRacers.length ? sortedRacers[index] : null;
-      })
-      .filter((racer): racer is Racer => racer !== null);
+  // Get optimal group sizes
+  const groups = determineRaceGroups(sortedRacers.length);
+  
+  let currentRaceNumber = 1;
+  let startIndex = 0;
 
-    if (raceRacers.length > 0) {
-      races.push({
-        raceNumber: Math.floor(i / 4) + 1,
-        racers: raceRacers,
-        bracketType: 'winners',
-        round: 1,
-        status: 'pending',
-        position: Math.floor(i / 4),
-        raceId: '',
-        raceClass: '',
-      });
-    }
+  // Create races based on determined group sizes
+  for (const groupSize of groups) {
+    const raceRacers = sortedRacers.slice(startIndex, startIndex + groupSize);
+    races.push({
+      raceNumber: currentRaceNumber,
+      racers: raceRacers,
+      bracketType: 'winners',
+      round: 1,
+      status: 'pending',
+      position: currentRaceNumber - 1,
+      raceId: '',
+      raceClass: '',
+    });
+    currentRaceNumber++;
+    startIndex += groupSize;
   }
 
   return races;
+};
+
+// Helper function to calculate race numbers for different bracket sections
+const calculateRaceNumbers = (numFirstRoundRaces: number, totalLosers: number) => {
+  return {
+    // Winners bracket races: 1-2 for first round, 3 for second round
+    winnersStart: 1,
+    winnersSecondRound: 3,
+    
+    // Second chance races: 4 for first round, 5 for second round (if needed)
+    secondChanceFirstRound: 4,
+    secondChanceSecondRound: 5,
+    
+    // Finals is race 5 when we only have one second chance round, otherwise race 6
+    finals: totalLosers <= 2 ? 5 : 6
+  };
 };
 
 // Generate initial bracket structure including winners and losers brackets
@@ -155,74 +229,156 @@ const generateFullBracketStructure = (
   raceClass: string
 ): BracketRound[] => {
   const rounds: BracketRound[] = [];
+  const firstRoundRaces = groupIntoRaces(racers);
+  const numFirstRoundRaces = firstRoundRaces.length;
+  const totalLosers = numFirstRoundRaces; // One loser per first round race
+  const raceNumbers = calculateRaceNumbers(numFirstRoundRaces, totalLosers);
 
-  // Create first round of Winners bracket (Races 1-4)
-  const firstRoundRaces = groupIntoRaces(racers).map((race, idx) => ({
-    ...race,
-    bracketType: 'winners' as const,
-    round: 1,
-    nextWinnerRace: Math.floor(idx / 2) + 1, // Next winners race number
-    nextLoserRace: idx === 0 ? 5 : 7, // Race 1 losers go to Race 5, Race 2 losers go to Race 7
-    raceId,
-    raceClass,
-  }));
+  // Create first round of Winners bracket
+  const mappedFirstRoundRaces = firstRoundRaces.map((race, idx) => {
+    const raceNumber = idx + raceNumbers.winnersStart;
+    return {
+      ...race,
+      raceNumber,
+      bracketType: 'winners' as const,
+      round: 1,
+      nextWinnerRace: raceNumbers.winnersSecondRound,
+      nextLoserRace: raceNumbers.secondChanceFirstRound,
+      raceId,
+      raceClass,
+      status: 'pending' as const
+    };
+  });
 
   rounds.push({
     roundNumber: 1,
-    races: firstRoundRaces,
+    races: mappedFirstRoundRaces,
     raceId,
     raceClass,
-    bracketType: 'winners',
+    bracketType: 'winners'
   });
 
-  // Add Winners bracket Round 2
+  // Add Winners bracket second round
   rounds.push({
     roundNumber: 2,
-    races: [],
+    races: [{
+      raceNumber: raceNumbers.winnersSecondRound,
+      racers: [],
+      bracketType: 'winners' as const,
+      round: 2,
+      status: 'pending' as const,
+      position: 0,
+      nextWinnerRace: raceNumbers.finals,
+      raceId,
+      raceClass,
+    }],
     raceId,
     raceClass,
-    bracketType: 'winners',
+    bracketType: 'winners'
   });
 
   // Add Second Chance rounds
-  // Round 1 (Races 5,7)
-  rounds.push({
+  // First round of second chance (receives losers from winners round 1)
+  const secondChanceFirstRound = {
     roundNumber: 1,
-    races: [],
+    races: [{
+      raceNumber: raceNumbers.secondChanceFirstRound,
+      racers: [],
+      bracketType: 'losers' as const,
+      round: 1,
+      status: 'pending' as const,
+      position: 0,
+      // If we'll only have 2 losers, they go straight to finals
+      nextWinnerRace: totalLosers <= 2 ? raceNumbers.finals : raceNumbers.secondChanceSecondRound,
+      raceId,
+      raceClass,
+    }],
     raceId,
     raceClass,
-    bracketType: 'losers',
-  });
+    bracketType: 'losers'
+  };
+  rounds.push(secondChanceFirstRound);
 
-  // Round 2 (Races 6,8)
-  rounds.push({
-    roundNumber: 2,
-    races: [],
-    raceId,
-    raceClass,
-    bracketType: 'losers',
-  });
+  // Only add second round of second chance if we'll have more than 2 losers
+  if (totalLosers > 2) {
+    rounds.push({
+      roundNumber: 2,
+      races: [{
+        raceNumber: raceNumbers.secondChanceSecondRound,
+        racers: [],
+        bracketType: 'losers' as const,
+        round: 2,
+        status: 'pending' as const,
+        position: 0,
+        nextWinnerRace: raceNumbers.finals,
+        raceId,
+        raceClass,
+      }],
+      raceId,
+      raceClass,
+      bracketType: 'losers'
+    });
+  }
 
-  // Add Finals (Race 10)
+  // Add Finals
   rounds.push({
-    roundNumber: 4,
-    races: [],
+    roundNumber: 3,
+    races: [{
+      raceNumber: raceNumbers.finals,
+      racers: [],
+      bracketType: 'final' as const,
+      round: 3,
+      status: 'pending' as const,
+      position: 0,
+      raceId,
+      raceClass,
+    }],
     raceId,
     raceClass,
-    bracketType: 'final',
+    bracketType: 'final'
   });
 
   return rounds;
 };
 
-// Replace the selector with a memoized version
+// Replace the selector with properly memoized versions
 const selectBracketsState = (state: RootState) => state.brackets;
 const selectRaceId = (_state: RootState, raceId: string) => raceId;
 const selectRaceClass = (_state: RootState, _raceId: string, raceClass: string) => raceClass;
 
 export const selectBracketsByRaceAndClass = createSelector(
   [selectBracketsState, selectRaceId, selectRaceClass],
-  (bracketsState, raceId, raceClass) => bracketsState.entities[raceId]?.[raceClass] || []
+  (bracketsState, raceId, raceClass) => {
+    const brackets = bracketsState.entities[raceId]?.[raceClass] || [];
+    return brackets.map(round => ({
+      ...round,
+      races: round.races.map(race => ({
+        ...race,
+        // Ensure we're not creating new arrays unnecessarily
+        racers: race.racers || [],
+        winners: race.winners || [],
+        losers: race.losers || [],
+      }))
+    }));
+  }
+);
+
+// Add selector for winners bracket
+export const selectWinnersBracket = createSelector(
+  [selectBracketsByRaceAndClass],
+  (brackets) => brackets.filter(round => round.bracketType === 'winners')
+);
+
+// Add selector for second chance bracket
+export const selectSecondChanceBracket = createSelector(
+  [selectBracketsByRaceAndClass],
+  (brackets) => brackets.filter(round => round.bracketType === 'losers')
+);
+
+// Add selector for finals
+export const selectFinalsBracket = createSelector(
+  [selectBracketsByRaceAndClass],
+  (brackets) => brackets.find(round => round.bracketType === 'final')
 );
 
 // Update the createBracket thunk
@@ -248,7 +404,9 @@ const createNextRoundRace = (
   roundNumber: number,
   raceNumber: number,
   position: number,
-  bracketType: 'winners' | 'losers' | 'final'
+  bracketType: 'winners' | 'losers' | 'final',
+  raceId: string,
+  raceClass: string
 ): BracketRace => ({
   raceNumber,
   racers: [],
@@ -256,8 +414,8 @@ const createNextRoundRace = (
   bracketType,
   status: 'pending',
   position,
-  raceId: '',
-  raceClass: '',
+  raceId,
+  raceClass,
 });
 
 // Helper to populate next round races
@@ -273,178 +431,80 @@ const populateNextRoundRaces = (
   bracketType: 'winners' | 'losers' | 'final'
 ): BracketRound[] => {
   const updatedRounds = [...rounds];
-  console.log('Populating next round:', {
-    currentRound,
-    raceNumber,
-    bracketType,
-    winners,
-    losers
-  });
-
-  // Get current race to check for disqualified racers
-  const currentRace = rounds
-    .find(r => r.roundNumber === currentRound && r.bracketType === bracketType)
-    ?.races.find(r => r.raceNumber === raceNumber);
-
-  // Filter out disqualified racers from winners and losers
-  const validWinners = winners.filter(
-    id => !currentRace?.disqualifiedRacers?.includes(id)
-  );
-  const validLosers = losers.filter(
-    id => !currentRace?.disqualifiedRacers?.includes(id)
-  );
+  const totalLosers = 2; // For 6 racers case
+  const raceNumbers = calculateRaceNumbers(2, totalLosers); // 2 first round races
 
   if (bracketType === 'winners') {
-    // Handle winners bracket progression
-    const nextRoundNumber = currentRound + 1;
-    const nextRoundIndex = rounds.findIndex(
-      r =>
-        r.roundNumber === nextRoundNumber &&
-        r.bracketType === 'winners' &&
-        r.raceId === raceId &&
-        r.raceClass === raceClass
-    );
-
-    if (nextRoundIndex >= 0) {
-      const nextRaceNumber = Math.floor((raceNumber - 1) / 2) + 1;
-      const existingRace = rounds[nextRoundIndex].races.find(r => r.raceNumber === nextRaceNumber);
-
-      if (existingRace) {
-        // Check for duplicates before adding winners
-        const newWinners = validWinners.filter(
-          winnerId => !existingRace.racers.some(r => r.id === winnerId)
-        );
-        if (newWinners.length > 0) {
-          existingRace.racers = [...existingRace.racers, ...getRacersByIds(racers, newWinners)];
-        }
-      } else {
-        const newRace = createNextRoundRace(
-          nextRoundNumber,
-          nextRaceNumber,
-          Math.floor((raceNumber - 1) / 2),
-          'winners'
-        );
-        newRace.racers = getRacersByIds(racers, validWinners);
-        updatedRounds[nextRoundIndex].races.push(newRace);
-      }
-    }
-
-    // Handle losers going to Second Chance Round 1 (only from first round)
     if (currentRound === 1) {
-      const loserRoundIndex = rounds.findIndex(
-        r =>
-          r.roundNumber === 1 &&
-          r.bracketType === 'losers' &&
-          r.raceId === raceId &&
-          r.raceClass === raceClass
+      // Winners go to Race 3
+      const nextRoundIndex = rounds.findIndex(
+        r => r.roundNumber === 2 && r.bracketType === 'winners'
       );
-
-      if (loserRoundIndex >= 0) {
-        // Calculate Second Chance race number (5 or 7 based on winners race number)
-        const secondChanceRaceNumber = raceNumber <= 2 ? 5 : 7;
-        console.log('Creating Second Chance race:', secondChanceRaceNumber);
-
-        // Find or create the race
-        let targetRace = updatedRounds[loserRoundIndex].races.find(
-          r => r.raceNumber === secondChanceRaceNumber
+      if (nextRoundIndex >= 0) {
+        const targetRace = updatedRounds[nextRoundIndex].races.find(
+          r => r.raceNumber === raceNumbers.winnersSecondRound
         );
-
-        if (!targetRace) {
-          targetRace = createNextRoundRace(1, secondChanceRaceNumber, secondChanceRaceNumber - 5, 'losers');
-          targetRace.nextWinnerRace = secondChanceRaceNumber + 1; // Points to Race 6 or 8
-          updatedRounds[loserRoundIndex].races.push(targetRace);
+        if (targetRace) {
+          const newWinners = winners.filter(
+            winnerId => !targetRace.racers.some(r => r.id === winnerId)
+          );
+          targetRace.racers = [...targetRace.racers, ...getRacersByIds(racers, newWinners)];
         }
+      }
 
-        // Add losers to the race
-        const newLosers = validLosers.filter(
-          loserId => !targetRace.racers.some(r => r.id === loserId)
+      // Losers go to Race 4
+      const loserRoundIndex = rounds.findIndex(
+        r => r.roundNumber === 1 && r.bracketType === 'losers'
+      );
+      if (loserRoundIndex >= 0) {
+        const targetRace = updatedRounds[loserRoundIndex].races.find(
+          r => r.raceNumber === raceNumbers.secondChanceFirstRound
         );
-        if (newLosers.length > 0) {
+        if (targetRace) {
+          const newLosers = losers.filter(
+            loserId => !targetRace.racers.some(r => r.id === loserId)
+          );
           targetRace.racers = [...targetRace.racers, ...getRacersByIds(racers, newLosers)];
         }
       }
-    }
-
-    // Check if Winners bracket Round 2 is complete and create finals if Second Chance is ready
-    if (currentRound === 2) {
-      const winnersChampions = validWinners; // This will be two winners from Round 2
-      
-      // Check if Second Chance Round 2 (Race 6) is complete
-      const secondChanceRound2 = rounds.find(
-        r => r.roundNumber === 2 && r.bracketType === 'losers'
-      );
-      const race6 = secondChanceRound2?.races.find(r => r.raceNumber === 6);
-      const race6Complete = race6?.status === 'completed';
-      const race6Winner = race6?.winners?.[0];
-
-      if (race6Complete && race6Winner && winnersChampions.length === 2) {
-        // Create finals (Race 10) with all three racers
-        const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
-        if (finalsIndex >= 0) {
-          const finalsRace = createNextRoundRace(4, 10, 0, 'final');
-          finalsRace.racers = [
-            ...getRacersByIds(racers, winnersChampions), // Add both winners from Round 2
-            ...getRacersByIds(racers, [race6Winner]) // Add the Second Chance winner
-          ];
-          updatedRounds[finalsIndex].races = [finalsRace];
-        }
+    } else if (currentRound === 2) {
+      // Winners from Race 3 go to Finals
+      const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
+      if (finalsIndex >= 0) {
+        const finalsRace = updatedRounds[finalsIndex].races[0];
+        finalsRace.racers = [...finalsRace.racers, ...getRacersByIds(racers, winners)];
       }
     }
   } else if (bracketType === 'losers') {
-    // Handle Second Chance progression
-    const currentRoundRaces = rounds.find(
-      r => r.roundNumber === currentRound && r.bracketType === 'losers'
-    )?.races || [];
-    
-    const allCurrentRoundComplete = currentRoundRaces.every(r => r.status === 'completed');
-    
-    if (allCurrentRoundComplete && currentRound === 1) {
-      const nextRoundIndex = rounds.findIndex(
-        r => r.roundNumber === 2 && r.bracketType === 'losers'
-      );
-      
-      if (nextRoundIndex >= 0) {
-        // Create Race 6 and 8
-        currentRoundRaces.forEach(race => {
-          const nextRaceNumber = race.raceNumber === 5 ? 6 : 8;
-          console.log('Creating Second Chance Round 2 race:', nextRaceNumber);
-          
-          // Check if race already exists
-          const existingRace = updatedRounds[nextRoundIndex].races.find(
-            r => r.raceNumber === nextRaceNumber
-          );
-
-          if (!existingRace) {
-            const newRace = createNextRoundRace(2, nextRaceNumber, nextRaceNumber - 6, 'losers');
-            newRace.racers = getRacersByIds(racers, race.winners || []);
-            updatedRounds[nextRoundIndex].races.push(newRace);
-          }
-        });
-      }
-    }
-
-    // Check if this is Race 6 completion and Winners bracket Round 2 is complete
-    if (currentRound === 2 && raceNumber === 6) {
-      const race6Winner = validWinners[0];
-      
-      // Check if Winners bracket Round 2 is complete
-      const winnersRound2 = rounds.find(
-        r => r.roundNumber === 2 && r.bracketType === 'winners'
-      );
-      const winnersRound2Complete = winnersRound2?.races.every(r => r.status === 'completed');
-      const winnersChampions = winnersRound2?.races[0]?.winners;
-
-      if (winnersRound2Complete && winnersChampions?.length === 2) {
-        // Create finals (Race 10) with all three racers
+    if (currentRound === 1) {
+      if (totalLosers <= 2) {
+        // If only 2 losers, winners go directly to finals
         const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
         if (finalsIndex >= 0) {
-          const finalsRace = createNextRoundRace(4, 10, 0, 'final');
-          finalsRace.racers = [
-            ...getRacersByIds(racers, winnersChampions), // Add both winners from Round 2
-            ...getRacersByIds(racers, [race6Winner]) // Add the Second Chance winner
-          ];
-          updatedRounds[finalsIndex].races = [finalsRace];
+          const finalsRace = updatedRounds[finalsIndex].races[0];
+          const winnerRacers = getRacersByIds(racers, winners);
+          finalsRace.racers = [...finalsRace.racers, ...winnerRacers];
         }
+      } else {
+        // Winners from Race 4 go to Race 5
+        const nextRoundIndex = rounds.findIndex(
+          r => r.roundNumber === 2 && r.bracketType === 'losers'
+        );
+        if (nextRoundIndex >= 0) {
+          const targetRace = updatedRounds[nextRoundIndex].races.find(
+            r => r.raceNumber === raceNumbers.secondChanceSecondRound
+          );
+          if (targetRace) {
+            targetRace.racers = [...targetRace.racers, ...getRacersByIds(racers, winners)];
+          }
+        }
+      }
+    } else if (currentRound === 2) {
+      // Winners from Race 5 go to Finals
+      const finalsIndex = rounds.findIndex(r => r.bracketType === 'final');
+      if (finalsIndex >= 0) {
+        const finalsRace = updatedRounds[finalsIndex].races[0];
+        finalsRace.racers = [...finalsRace.racers, ...getRacersByIds(racers, winners)];
       }
     }
   }
@@ -575,13 +635,27 @@ const bracketSlice = createSlice({
           loading: false,
           error: null
         };
+        console.log('Saving bracket state to localStorage:', stateToSave);
         localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
       .addCase(updateRaceResults.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, winners, losers, racers } =
           action.payload;
 
-        if (!state.entities[raceId]?.[raceClass]) return;
+        console.log('Updating race results:', {
+          raceId,
+          raceClass,
+          raceNumber,
+          round,
+          bracketType,
+          winners,
+          losers
+        });
+
+        if (!state.entities[raceId]?.[raceClass]) {
+          console.log('No bracket found for race/class:', { raceId, raceClass });
+          return;
+        }
 
         // Update current race results
         let updatedRounds = state.entities[raceId][raceClass].map((bracketRound: BracketRound) => {
@@ -589,11 +663,31 @@ const bracketSlice = createSlice({
             bracketRound.roundNumber === round &&
             bracketRound.bracketType === bracketType
           ) {
+            console.log('Updating round:', {
+              roundNumber: round,
+              bracketType,
+              currentRaces: bracketRound.races
+            });
+
             return {
               ...bracketRound,
               races: bracketRound.races.map((race: BracketRace) =>
                 race.raceNumber === raceNumber
-                  ? { ...race, winners, losers, status: 'completed' as const }
+                  ? { 
+                      ...race, 
+                      winners, 
+                      losers, 
+                      status: 'completed' as const,
+                      // For finals, also update finalRankings when completing the race
+                      ...(bracketType === 'final' && {
+                        finalRankings: {
+                          first: winners[0],
+                          second: winners[1],
+                          third: losers[0],
+                          fourth: losers[1]
+                        }
+                      })
+                    }
                   : race
               ),
             };
@@ -601,44 +695,85 @@ const bracketSlice = createSlice({
           return bracketRound;
         });
 
-        // Populate next round races
-        updatedRounds = populateNextRoundRaces(
-          updatedRounds,
-          round,
-          raceId,
-          raceClass,
-          winners,
-          losers,
-          racers,
-          raceNumber,
-          bracketType
-        );
+        // Only populate next round if this isn't the finals
+        if (bracketType !== 'final') {
+          // Populate next round races
+          updatedRounds = populateNextRoundRaces(
+            updatedRounds,
+            round,
+            raceId,
+            raceClass,
+            winners,
+            losers,
+            racers,
+            raceNumber,
+            bracketType
+          );
+        } else {
+          console.log('Final round race completed:', {
+            winners,
+            losers,
+            updatedRounds
+          });
+        }
 
         state.entities[raceId][raceClass] = updatedRounds;
-        localStorage.setItem('brackets', JSON.stringify(state));
+        
+        // Save with proper structure
+        const stateToSave = {
+          entities: state.entities,
+          loading: false,
+          error: null
+        };
+        console.log('Saving bracket state to localStorage:', stateToSave);
+        localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
       .addCase(updateFinalRankings.fulfilled, (state, action) => {
         const { raceId, raceClass, rankings } = action.payload;
+        
+        console.log('Updating final rankings:', {
+          raceId,
+          raceClass,
+          rankings,
+          currentState: JSON.parse(JSON.stringify(state.entities))
+        });
 
-        if (!state.entities[raceId]?.[raceClass]) return;
+        if (!state.entities[raceId]?.[raceClass]) {
+          console.log('No bracket found for race/class:', { raceId, raceClass });
+          return;
+        }
 
         state.entities[raceId][raceClass] = state.entities[raceId][raceClass].map((round: BracketRound) => {
           if (round.bracketType === 'final') {
-            return {
+            console.log('Found final round, current races:', round.races);
+            const updatedRound = {
               ...round,
-              races: round.races.map((race: BracketRace) => ({
-                ...race,
-                finalRankings: rankings,
-                status: 'completed' as const,
-                winners: [rankings.first, rankings.second],
-                losers: [rankings.third, rankings.fourth],
-              })),
+              races: round.races.map((race: BracketRace) => {
+                const updatedRace = {
+                  ...race,
+                  finalRankings: rankings,
+                  status: 'completed' as const,
+                  winners: [rankings.first, rankings.second],
+                  losers: [rankings.third, rankings.fourth],
+                };
+                console.log('Updated final race:', updatedRace);
+                return updatedRace;
+              }),
             };
+            console.log('Updated final round:', updatedRound);
+            return updatedRound;
           }
           return round;
         });
 
-        localStorage.setItem('brackets', JSON.stringify(state));
+        // Save with proper structure
+        const stateToSave = {
+          entities: state.entities,
+          loading: false,
+          error: null
+        };
+        console.log('Final state being saved to localStorage:', JSON.parse(JSON.stringify(stateToSave)));
+        localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
       .addCase(disqualifyRacer.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, racerId } = action.payload;
@@ -685,7 +820,14 @@ const bracketSlice = createSlice({
           return bracketRound;
         });
 
-        localStorage.setItem('brackets', JSON.stringify(state));
+        // Save with proper structure
+        const stateToSave = {
+          entities: state.entities,
+          loading: false,
+          error: null
+        };
+        console.log('Saving bracket state to localStorage:', stateToSave);
+        localStorage.setItem('brackets', JSON.stringify(stateToSave));
       });
   },
 });

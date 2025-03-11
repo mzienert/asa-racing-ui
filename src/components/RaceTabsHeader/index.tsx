@@ -4,7 +4,6 @@ import RaceStatusBadge from '@/components/RaceStatusBadge';
 import CurrentRaceBadge from '@/components/CurrentRaceBadge';
 import { useSelector } from 'react-redux';
 import { selectRaces, selectActiveRace } from '@/store/selectors/raceSelectors';
-import { getActiveRaces } from '@/helpers/racers';
 
 interface RaceTabsHeaderProps {
   filterStatus?: boolean;
@@ -15,19 +14,33 @@ interface RaceTabsHeaderProps {
 export const RaceTabsHeader = ({ filterStatus = false, onTabChange }: RaceTabsHeaderProps) => {
   const allRaces = useSelector(selectRaces);
   const activeRace = useSelector(selectActiveRace);
-  const initialRaces = getActiveRaces(allRaces);
   
+  // Only filter if filterStatus is true, otherwise show all races
   const races = filterStatus
-    ? initialRaces.filter(
+    ? allRaces.filter(
         race =>
           race.status === RaceStatus.Configuring ||
           race.status === RaceStatus.In_Progress
       )
-    : initialRaces;
+    : allRaces;
+
+  // Sort races to show active race first, then by status (completed last)
+  const sortedRaces = [...races].sort((a, b) => {
+    // Active race always comes first
+    if (a.id === activeRace?.id) return -1;
+    if (b.id === activeRace?.id) return 1;
+    
+    // Then sort by status (completed last)
+    if (a.status === 'completed' && b.status !== 'completed') return 1;
+    if (a.status !== 'completed' && b.status === 'completed') return -1;
+    
+    // Finally sort by name
+    return a.name.localeCompare(b.name);
+  });
 
   return (
     <TabsList className="w-full justify-start">
-      {races.map(race => (
+      {sortedRaces.map(race => (
         <TabsTrigger
           key={race.id}
           value={race.id}

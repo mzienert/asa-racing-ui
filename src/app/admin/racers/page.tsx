@@ -97,7 +97,7 @@ const Racers = () => {
     );
   }
 
-  if (!hasRace) {
+  if (!races.find(race => race.id === selectedRaceId)) {
     return (
       <NoRaceState
         title="Racer Management"
@@ -122,7 +122,7 @@ const Racers = () => {
                   selectedRaceId={selectedRaceId}
                   onTabChange={setSelectedRaceId}
                 />
-                {activeRaces.map(race => (
+                {races.map(race => (
                   <RaceContent key={race.id} race={race} />
                 ))}
               </Tabs>

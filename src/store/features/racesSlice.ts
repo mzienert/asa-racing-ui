@@ -156,6 +156,13 @@ export const updateRaceClass = createAsyncThunk(
   }
 );
 
+export const updateRaceStatus = createAsyncThunk(
+  'races/updateStatus',
+  async ({ raceId, status }: { raceId: string; status: 'active' | 'completed' }) => {
+    return { raceId, status };
+  }
+);
+
 const racesSlice = createSlice({
   name: 'races',
   initialState,
@@ -201,6 +208,13 @@ const racesSlice = createSlice({
           if (raceClassItem) {
             Object.assign(raceClassItem, updates);
           }
+        }
+      })
+      .addCase(updateRaceStatus.fulfilled, (state, action) => {
+        const race = state.items.find(r => r.id === action.payload.raceId);
+        if (race) {
+          race.status = action.payload.status;
+          localStorage.setItem('races', JSON.stringify(state.items));
         }
       });
   },
