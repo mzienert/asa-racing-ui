@@ -657,7 +657,9 @@ export const populateNextRoundRaces = (
     }
   } else if (bracketType === 'losers') {
     // Special case for 6-7 racers (3 losers) in first round of second chance
-    const shouldAdvanceTwoWinners = totalLosers === 3 && currentRound === 1;
+    // For 8 racers, we should advance 2 winners from Race 4 to Race 5
+    const shouldAdvanceTwoWinners = (totalLosers === 3 && currentRound === 1) || 
+                                  (totalRacers === 8 && currentRound === 1);
     const actualWinners = shouldAdvanceTwoWinners
       ? winners.length >= 2
         ? winners.slice(0, 2)
