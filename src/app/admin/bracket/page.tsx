@@ -96,6 +96,25 @@ const BracketRace = ({
   const [rankings, setRankings] = useState<Record<string, number>>({});
   const dispatch = useDispatch<AppDispatch>();
 
+  // Ensure we have valid racers
+  const validRacers = (race.racers || []).filter(
+    (racer): racer is Racer => racer != null && typeof racer === 'object' && 'id' in racer
+  );
+
+  // Get total racers in the bracket
+  const totalRacers = useSelector((state: RootState) => {
+    const racersByClass = selectRacersByRaceId(state, race.raceId);
+    return racersByClass[race.raceClass]?.length || 0;
+  });
+
+  // Special case flags
+  const isNineRacersSecondRound = totalRacers === 9 && round === 2 && race.bracketType === 'winners';
+  const isNineRacersThirdRound = totalRacers === 9 && round === 3 && race.bracketType === 'winners';
+  const isSixRacersRace4 = race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 2;
+  const isSevenRacersRace4 = race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
+  const isSevenRacersRace5 = race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
+  const isSecondChanceTwoRacers = race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
+
   // Update selected racers when winners prop changes
   useEffect(() => {
     if (race.bracketType !== 'final') {
@@ -106,34 +125,12 @@ const BracketRace = ({
       const newRankings: Record<string, number> = {};
       if (race.finalRankings.first) newRankings[race.finalRankings.first] = 1;
       if (race.finalRankings.second) newRankings[race.finalRankings.second] = 2;
-      // For 3 racers, use position 3 instead of 4
       if (race.finalRankings.third) {
         newRankings[race.finalRankings.third] = race.racers.length === 3 ? 3 : 4;
       }
       setRankings(newRankings);
     }
   }, [race.bracketType, winners, race.finalRankings, race.racers.length]);
-
-  // Ensure we have valid racers
-  const validRacers = (race.racers || []).filter(
-    (racer): racer is Racer => racer != null && typeof racer === 'object' && 'id' in racer
-  );
-
-  // Special case for 6 racers in second chance first round (Race 4)
-  const isSixRacersRace4 =
-    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 2;
-
-  // For 7 racers, Race 4 should allow 2 winners to advance to Race 5
-  const isSevenRacersRace4 =
-    race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
-
-  // For 7 racers, Race 5 should allow 1 winner to advance to Finals
-  const isSevenRacersRace5 =
-    race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
-
-  // Determine if this is a second chance race with exactly 2 racers (but not Race 4 for 7 racers)
-  const isSecondChanceTwoRacers =
-    race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
 
   const handleRacerSelect = (racerId: string) => {
     // For finals, handle rankings differently
@@ -174,20 +171,10 @@ const BracketRace = ({
       return;
     }
 
-    // Special handling for Race 4 with 6 racers (only allow 1 winner)
-    if (isSixRacersRace4) {
-      const isSelected = selectedRacers.includes(racerId);
-      if (isSelected) {
-        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
-      } else if (selectedRacers.length < 1) {
-        setSelectedRacers([racerId]);
-      }
-      return;
-    }
+    const isSelected = selectedRacers.includes(racerId);
 
-    // Special handling for Race 4 with 7 racers
-    if (isSevenRacersRace4) {
-      const isSelected = selectedRacers.includes(racerId);
+    // Handle all special cases
+    if (isNineRacersSecondRound || isNineRacersThirdRound) {
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 2) {
@@ -196,9 +183,7 @@ const BracketRace = ({
       return;
     }
 
-    // Special handling for Race 5 with 2 racers from Race 4
-    if (isSevenRacersRace5 || isSecondChanceTwoRacers) {
-      const isSelected = selectedRacers.includes(racerId);
+    if (isSixRacersRace4 || (isSecondChanceTwoRacers && !isSevenRacersRace5)) {
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 1) {
@@ -207,8 +192,16 @@ const BracketRace = ({
       return;
     }
 
-    // Default handling for other races
-    const isSelected = selectedRacers.includes(racerId);
+    if (isSevenRacersRace4) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 2) {
+        setSelectedRacers([...selectedRacers, racerId]);
+      }
+      return;
+    }
+
+    // Default handling for standard races
     if (isSelected) {
       setSelectedRacers(selectedRacers.filter(id => id !== racerId));
     } else if (selectedRacers.length < 2) {
@@ -361,33 +354,16 @@ const BracketRace = ({
       return;
     }
 
-    // For Race 4 in 6-racer scenario, ensure we have exactly 1 winner
-    if (isSixRacersRace4 && selectedRacers.length !== 1) {
-      return;
-    }
+    // Validate selected racers count based on race type
+    const isValid = 
+      (isNineRacersSecondRound && selectedRacers.length === 2) ||
+      (isNineRacersThirdRound && selectedRacers.length === 2) ||
+      (isSixRacersRace4 && selectedRacers.length === 1) ||
+      (isSevenRacersRace4 && selectedRacers.length === 2) ||
+      ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && selectedRacers.length === 1) ||
+      (!isSixRacersRace4 && !isSevenRacersRace4 && !isSevenRacersRace5 && !isSecondChanceTwoRacers && selectedRacers.length === 2);
 
-    // For Race 4 in 7-racer scenario, ensure we have exactly 2 winners
-    if (isSevenRacersRace4 && selectedRacers.length !== 2) {
-      return;
-    }
-
-    // For Race 5 or second chance with 2 racers, ensure we have exactly 1 winner
-    if (
-      (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
-      selectedRacers.length !== 1
-    ) {
-      return;
-    }
-
-    // For standard races, ensure we have exactly 2 winners (unless it's finals)
-    if (
-      !isSixRacersRace4 &&
-      !isSevenRacersRace4 &&
-      !isSevenRacersRace5 &&
-      !isSecondChanceTwoRacers &&
-      race.bracketType !== 'final' &&
-      selectedRacers.length !== 2
-    ) {
+    if (!isValid) {
       return;
     }
 
@@ -421,12 +397,11 @@ const BracketRace = ({
             {race.bracketType === 'winners' && ' (Winners Bracket)'}
             {race.bracketType === 'losers' && ' (Second Chance)'}
             {race.bracketType === 'final' && ' (Finals)'}
-            {race.bracketType === 'losers' &&
-              race.raceNumber === 4 &&
-              validRacers.length > 2 &&
-              ' (Select Two Winners)'}
-            {isSevenRacersRace5 && ' (Select One Winner)'}
-            {isSecondChanceTwoRacers && !isSevenRacersRace5 && ' (Select One Winner)'}
+            {isNineRacersSecondRound && ' (Select Two Winners)'}
+            {isNineRacersThirdRound && ' (Select Two Winners)'}
+            {isSixRacersRace4 && ' (Select One Winner)'}
+            {isSevenRacersRace4 && ' (Select Two Winners)'}
+            {(isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) && ' (Select One Winner)'}
           </span>
         </div>
         {selectedRacers.length > 0 && race.status !== 'completed' && (
