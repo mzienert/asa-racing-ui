@@ -80,7 +80,7 @@ const RaceStatusIndicator = ({ status }: { status: RaceStatus }) => {
   const statusColors: Record<RaceStatus, string> = {
     [RaceStatus.In_Progress]: 'text-yellow-500',
     [RaceStatus.Completed]: 'text-green-500',
-    [RaceStatus.Configuring]: 'text-gray-400'
+    [RaceStatus.Configuring]: 'text-gray-400',
   };
 
   return <Circle className={cn('h-4 w-4', statusColors[status])} />;
@@ -691,7 +691,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
       }
     }
 
-    // Dispatch the race results update directly without checking currentRound
+    // Dispatch the race results update
     dispatch(
       updateRaceResults({
         raceId: race.id,
@@ -716,6 +716,50 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           };
           return newState;
         });
+
+        // For 6-racer brackets, ensure winners advance to next round
+        if (totalRacers === 6 && bracketType === 'winners' && round === 1) {
+          const nextRound = brackets.find(
+            b => b.roundNumber === 2 && b.bracketType === 'winners' && b.raceClass === raceClass
+          );
+
+          if (nextRound && nextRound.races[0]) {
+            const nextRace = nextRound.races[0];
+            // Update the next race's racers if both first round races are complete
+            const firstRoundRaces =
+              brackets.find(
+                b => b.roundNumber === 1 && b.bracketType === 'winners' && b.raceClass === raceClass
+              )?.races || [];
+
+            const allFirstRoundComplete = firstRoundRaces.every(r => r.status === 'completed');
+
+            if (allFirstRoundComplete) {
+              // Get all winners from first round races
+              const allWinners = firstRoundRaces.flatMap(r => r.winners || []);
+
+              // Get the full racer objects for the winners, ensuring no undefined values
+              const winnerRacers = allWinners
+                .map(winnerId => racersByClass[raceClass].find(r => r.id === winnerId))
+                .filter((racer): racer is Racer => racer !== undefined);
+
+              // Only proceed if we have all 4 winners
+              if (winnerRacers.length === 4) {
+                dispatch(
+                  updateRaceResults({
+                    raceId: race.id,
+                    raceClass,
+                    raceNumber: nextRace.raceNumber,
+                    round: 2,
+                    bracketType: 'winners',
+                    winners: [],
+                    losers: [],
+                    racers: winnerRacers,
+                  })
+                );
+              }
+            }
+          }
+        }
       })
       .catch(() => {
         // Silently handle error - could add error logging here if needed
@@ -997,6 +1041,7 @@ const Bracket = () => {
     activeRace?.raceClasses[0]?.raceClass || ''
   );
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showFinishDialog, setShowFinishDialog] = useState(false);
 
   // Memoized selector for brackets
   const selectAllBracketsByRaceId = createSelector(
@@ -1058,58 +1103,56 @@ const Bracket = () => {
   const handleFinishRace = () => {
     if (!activeRace) return;
 
-    if (
-      window.confirm('Are you sure you want to finish this race? This action cannot be undone.')
-    ) {
-      // First, ensure all final rankings are saved for each class
-      const savePromises = activeRace.raceClasses.map(async ({ raceClass }) => {
-        const finalRound = brackets.find(
-          round => round.bracketType === 'final' && round.raceClass === raceClass
-        );
+    // First, ensure all final rankings are saved for each class
+    const savePromises = activeRace.raceClasses.map(async ({ raceClass }) => {
+      const finalRound = brackets.find(
+        round => round.bracketType === 'final' && round.raceClass === raceClass
+      );
 
-        if (finalRound?.races?.[0]?.finalRankings) {
-          const finalRace = finalRound.races[0];
-          const rankings = finalRace.finalRankings!;
+      if (finalRound?.races?.[0]?.finalRankings) {
+        const finalRace = finalRound.races[0];
+        const rankings = finalRace.finalRankings!;
 
-          await dispatch(
-            updateFinalRankings({
-              raceId: activeRace.id,
-              raceClass,
-              rankings: {
-                first: rankings.first!,
-                second: rankings.second!,
-                third: rankings.third!,
-                fourth: rankings.fourth!,
-              },
-            })
-          );
-        }
-      });
-
-      // After all rankings are saved, update race status
-      Promise.all(savePromises).then(() => {
-        dispatch(
-          updateRaceStatus({
+        await dispatch(
+          updateFinalRankings({
             raceId: activeRace.id,
-            status: RaceStatus.Completed,
+            raceClass,
+            rankings: {
+              first: rankings.first!,
+              second: rankings.second!,
+              third: rankings.third!,
+              fourth: rankings.fourth!,
+            },
           })
         );
+      }
+    });
 
-        // Also update each race class status
-        activeRace.raceClasses.forEach(({ raceClass }) => {
-          dispatch(
-            updateRaceClass({
-              raceId: activeRace.id,
+    // After all rankings are saved, update race status
+    Promise.all(savePromises).then(() => {
+      dispatch(
+        updateRaceStatus({
+          raceId: activeRace.id,
+          status: RaceStatus.Completed,
+        })
+      );
+
+      // Also update each race class status
+      activeRace.raceClasses.forEach(({ raceClass }) => {
+        dispatch(
+          updateRaceClass({
+            raceId: activeRace.id,
+            raceClass,
+            updates: {
               raceClass,
-              updates: {
-                raceClass,
-                status: RaceClassStatus.Completed,
-              },
-            })
-          );
-        });
+              status: RaceClassStatus.Completed,
+            },
+          })
+        );
       });
-    }
+
+      setShowFinishDialog(false);
+    });
   };
 
   // Add check for no races
@@ -1143,7 +1186,7 @@ const Bracket = () => {
                   variant="default"
                   size="sm"
                   className="gap-2"
-                  onClick={handleFinishRace}
+                  onClick={() => setShowFinishDialog(true)}
                   disabled={
                     !activeRace || !areAllBracketsCompleted(brackets, activeRace.raceClasses)
                   }
@@ -1183,6 +1226,17 @@ const Bracket = () => {
         onConfirm={handleResetBrackets}
         cancelText="Cancel"
         confirmText="Reset Brackets"
+      />
+      <ConfirmationDialog
+        open={showFinishDialog}
+        onOpenChange={setShowFinishDialog}
+        title="Finish Race"
+        description="Are you sure you want to finish this race? This action cannot be undone."
+        onCancel={() => setShowFinishDialog(false)}
+        onConfirm={handleFinishRace}
+        cancelText="Cancel"
+        confirmText="Finish Race"
+        variant="green"
       />
     </div>
   );
