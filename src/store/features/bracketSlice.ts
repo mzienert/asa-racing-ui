@@ -1089,9 +1089,6 @@ const bracketSlice = createSlice({
 
         // Only populate next round if this isn't the finals
         if (bracketType !== 'final') {
-          // Find Race 3's actual round
-          const race3Round = updatedRounds.find(r => r.races.some(race => race.raceNumber === 3));
-
           // Populate next round races
           updatedRounds = populateNextRoundRaces(
             updatedRounds,

@@ -927,10 +927,10 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           });
         })
         .catch(error => {
-          // Handle error silently
+          console.error('Error in handleWinnerSelect:', error);
         });
     } catch (error) {
-      // Handle error silently
+      console.error('Error in handleWinnerSelect:', error);
     }
   };
 
