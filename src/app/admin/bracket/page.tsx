@@ -667,23 +667,25 @@ const BracketRace = ({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-auto aspect-square text-gray-600 hover:text-gray-700 hover:bg-gray-100"
-                          onClick={() => handleDNS(racer.id)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Did Not Start (DNS)</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {round === 1 && race.bracketType === 'winners' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-auto aspect-square text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                            onClick={() => handleDNS(racer.id)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Did Not Start (DNS)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </>
               )}
             </div>
@@ -702,7 +704,7 @@ const BracketRace = ({
         onConfirm={handleConfirmDQ}
         cancelText="Cancel"
         confirmText="Disqualify"
-        variant="red"
+        variant="default"
       />
       <ConfirmationDialog
         open={showDNSDialog}
@@ -716,7 +718,7 @@ const BracketRace = ({
         onConfirm={handleConfirmDNS}
         cancelText="Cancel"
         confirmText="Mark as DNS"
-        variant="gray"
+        variant="default"
       />
     </div>
   );
