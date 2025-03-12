@@ -22,6 +22,7 @@ export interface BracketRace {
     fourth?: string;
   };
   disqualifiedRacers?: string[]; // IDs of disqualified racers
+  dnsRacers?: string[]; // IDs of racers who did not start
   raceId: string; // ID of the parent race
   raceClass: string; // Class of the race
 }
@@ -963,6 +964,37 @@ export const disqualifyRacer = createAsyncThunk(
   }
 );
 
+export const markRacerDNS = createAsyncThunk(
+  'bracket/markRacerDNS',
+  async ({
+    raceId,
+    raceClass,
+    raceNumber,
+    round,
+    bracketType,
+    racerId,
+    racers,
+  }: {
+    raceId: string;
+    raceClass: string;
+    raceNumber: number;
+    round: number;
+    bracketType: 'winners' | 'losers' | 'final';
+    racerId: string;
+    racers: Racer[];
+  }) => {
+    return {
+      raceId,
+      raceClass,
+      raceNumber,
+      round,
+      bracketType,
+      racerId,
+      racers,
+    };
+  }
+);
+
 const bracketSlice = createSlice({
   name: 'brackets',
   initialState,
@@ -1133,6 +1165,61 @@ const bracketSlice = createSlice({
                     return {
                       ...race,
                       disqualifiedRacers,
+                      winners,
+                      losers,
+                    };
+                  }
+                  return race;
+                }),
+              };
+            }
+            return bracketRound;
+          }
+        );
+
+        // Save with proper structure
+        const stateToSave = {
+          entities: state.entities,
+          loading: false,
+          error: null,
+        };
+        localStorage.setItem('brackets', JSON.stringify(stateToSave));
+      })
+      .addCase(markRacerDNS.fulfilled, (state, action) => {
+        const { raceId, raceClass, raceNumber, round, bracketType, racerId } = action.payload;
+
+        if (!state.entities[raceId]?.[raceClass]) return;
+
+        state.entities[raceId][raceClass] = state.entities[raceId][raceClass].map(
+          (bracketRound: BracketRound) => {
+            if (bracketRound.roundNumber === round && bracketRound.bracketType === bracketType) {
+              return {
+                ...bracketRound,
+                races: bracketRound.races.map((race: BracketRace) => {
+                  if (race.raceNumber === raceNumber) {
+                    const dnsRacers = [...(race.dnsRacers || []), racerId];
+                    const winners = race.winners?.filter((id: string) => id !== racerId) || [];
+                    const losers = race.losers?.filter((id: string) => id !== racerId) || [];
+
+                    if (race.finalRankings) {
+                      const rankings = { ...race.finalRankings };
+                      Object.entries(rankings).forEach(([position, id]) => {
+                        if (id === racerId) {
+                          delete rankings[position as keyof typeof rankings];
+                        }
+                      });
+                      return {
+                        ...race,
+                        dnsRacers,
+                        winners,
+                        losers,
+                        finalRankings: rankings,
+                      };
+                    }
+
+                    return {
+                      ...race,
+                      dnsRacers,
                       winners,
                       losers,
                     };

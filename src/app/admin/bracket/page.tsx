@@ -8,6 +8,7 @@ import {
   resetBrackets,
   updateFinalRankings,
   disqualifyRacer,
+  markRacerDNS,
 } from '@/store/features/bracketSlice';
 import {
   loadRacesFromStorage,
@@ -24,7 +25,7 @@ import {
   selectRaces,
 } from '@/store/selectors/raceSelectors';
 import { AppDispatch } from '@/store/store';
-import { Users, Trophy, Ban, Hash, Flag } from 'lucide-react';
+import { Users, Trophy, Ban, Hash, Flag, XCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectRaceClassesByRaceId, selectRacersByRaceId } from '@/store/selectors/raceSelectors';
@@ -39,6 +40,12 @@ import NoRaceState from '@/components/NoRaceState';
 import { Racer } from '@/store/features/racersSlice';
 import { createSelector } from '@reduxjs/toolkit';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface BracketContentProps {
   race: Race;
@@ -95,6 +102,9 @@ const BracketRace = ({
 }: BracketRaceProps) => {
   const [selectedRacers, setSelectedRacers] = useState<string[]>(winners || []);
   const [rankings, setRankings] = useState<Record<string, number>>({});
+  const [showDQDialog, setShowDQDialog] = useState(false);
+  const [showDNSDialog, setShowDNSDialog] = useState(false);
+  const [selectedRacerForAction, setSelectedRacerForAction] = useState<string | null>(null);
   const dispatch = useDispatch<AppDispatch>();
 
   // Ensure we have valid racers
@@ -324,64 +334,137 @@ const BracketRace = ({
   };
 
   const handleDisqualify = (racerId: string) => {
-    if (
-      window.confirm(
-        'Are you sure you want to disqualify this racer? This action cannot be undone.'
-      )
-    ) {
-      // Remove from selected racers if present
-      setSelectedRacers(prev => prev.filter(id => id !== racerId));
+    setSelectedRacerForAction(racerId);
+    setShowDQDialog(true);
+  };
 
-      // Remove from rankings if present
-      if (race.bracketType === 'final') {
-        setRankings(prev => {
-          const newRankings = { ...prev };
-          delete newRankings[racerId];
-          return newRankings;
-        });
-      }
+  const handleConfirmDQ = () => {
+    if (!selectedRacerForAction) return;
 
-      // Dispatch disqualification action
-      dispatch(
-        disqualifyRacer({
-          raceId: race.raceId,
-          raceClass: race.raceClass,
-          raceNumber: race.raceNumber,
-          round: round,
-          bracketType: race.bracketType,
-          racerId,
-          racers: race.racers,
-        })
-      ).then(() => {
-        // After disqualification, update winners/losers if needed
-        if (race.status === 'completed') {
-          const remainingRacers = race.racers.filter(r => r.id !== racerId).map(r => r.id);
+    // Remove from selected racers if present
+    setSelectedRacers(prev => prev.filter(id => id !== selectedRacerForAction));
 
-          if (race.bracketType === 'final') {
-            // For finals, recalculate rankings
-            const validRankings = { ...race.finalRankings };
-            Object.entries(validRankings).forEach(([position, id]) => {
-              if (id === racerId) {
-                delete validRankings[position as keyof typeof validRankings];
-              }
-            });
-            if (onFinalRankings && Object.keys(validRankings).length === 4) {
-              onFinalRankings({
-                first: validRankings.first!,
-                second: validRankings.second!,
-                third: validRankings.third!,
-                fourth: validRankings.fourth || validRankings.third!,
-              });
-            }
-          } else {
-            // For other races, update winners/losers
-            const validWinners = winners.filter(id => id !== racerId);
-            const validLosers = remainingRacers.filter(id => !validWinners.includes(id));
-            onWinnerSelect(race.raceNumber, validWinners, validLosers);
-          }
-        }
+    // Remove from rankings if present
+    if (race.bracketType === 'final') {
+      setRankings(prev => {
+        const newRankings = { ...prev };
+        delete newRankings[selectedRacerForAction];
+        return newRankings;
       });
     }
+
+    // Dispatch disqualification action
+    dispatch(
+      disqualifyRacer({
+        raceId: race.raceId,
+        raceClass: race.raceClass,
+        raceNumber: race.raceNumber,
+        round: round,
+        bracketType: race.bracketType,
+        racerId: selectedRacerForAction,
+        racers: race.racers,
+      })
+    ).then(() => {
+      // After disqualification, update winners/losers if needed
+      if (race.status === 'completed') {
+        const remainingRacers = race.racers
+          .filter(r => r.id !== selectedRacerForAction)
+          .map(r => r.id);
+
+        if (race.bracketType === 'final') {
+          // For finals, recalculate rankings
+          const validRankings = { ...race.finalRankings };
+          Object.entries(validRankings).forEach(([position, id]) => {
+            if (id === selectedRacerForAction) {
+              delete validRankings[position as keyof typeof validRankings];
+            }
+          });
+          if (onFinalRankings && Object.keys(validRankings).length === 4) {
+            onFinalRankings({
+              first: validRankings.first!,
+              second: validRankings.second!,
+              third: validRankings.third!,
+              fourth: validRankings.fourth || validRankings.third!,
+            });
+          }
+        } else {
+          // For other races, update winners/losers
+          const validWinners = winners.filter(id => id !== selectedRacerForAction);
+          const validLosers = remainingRacers.filter(id => !validWinners.includes(id));
+          onWinnerSelect(race.raceNumber, validWinners, validLosers);
+        }
+      }
+    });
+
+    setShowDQDialog(false);
+    setSelectedRacerForAction(null);
+  };
+
+  const handleDNS = (racerId: string) => {
+    setSelectedRacerForAction(racerId);
+    setShowDNSDialog(true);
+  };
+
+  const handleConfirmDNS = () => {
+    if (!selectedRacerForAction) return;
+
+    // Remove from selected racers if present
+    setSelectedRacers(prev => prev.filter(id => id !== selectedRacerForAction));
+
+    // Remove from rankings if present
+    if (race.bracketType === 'final') {
+      setRankings(prev => {
+        const newRankings = { ...prev };
+        delete newRankings[selectedRacerForAction];
+        return newRankings;
+      });
+    }
+
+    // Dispatch DNS action
+    dispatch(
+      markRacerDNS({
+        raceId: race.raceId,
+        raceClass: race.raceClass,
+        raceNumber: race.raceNumber,
+        round: round,
+        bracketType: race.bracketType,
+        racerId: selectedRacerForAction,
+        racers: race.racers,
+      })
+    ).then(() => {
+      // After DNS, update winners/losers if needed
+      if (race.status === 'completed') {
+        const remainingRacers = race.racers
+          .filter(r => r.id !== selectedRacerForAction)
+          .map(r => r.id);
+
+        if (race.bracketType === 'final') {
+          // For finals, recalculate rankings
+          const validRankings = { ...race.finalRankings };
+          Object.entries(validRankings).forEach(([position, id]) => {
+            if (id === selectedRacerForAction) {
+              delete validRankings[position as keyof typeof validRankings];
+            }
+          });
+          if (onFinalRankings && Object.keys(validRankings).length === 4) {
+            onFinalRankings({
+              first: validRankings.first!,
+              second: validRankings.second!,
+              third: validRankings.third!,
+              fourth: validRankings.fourth || validRankings.third!,
+            });
+          }
+        } else {
+          // For other races, update winners/losers
+          const validWinners = winners.filter(id => id !== selectedRacerForAction);
+          const validLosers = remainingRacers.filter(id => !validWinners.includes(id));
+          onWinnerSelect(race.raceNumber, validWinners, validLosers);
+        }
+      }
+    });
+
+    setShowDNSDialog(false);
+    setSelectedRacerForAction(null);
   };
 
   const handleCompleteRace = () => {
@@ -501,6 +584,7 @@ const BracketRace = ({
       <div className="match-pair space-y-2">
         {validRacers.map(racer => {
           const isDisqualified = race.disqualifiedRacers?.includes(racer.id);
+          const isDNS = race.dnsRacers?.includes(racer.id);
 
           return (
             <div key={racer.id} className="flex gap-2">
@@ -509,6 +593,7 @@ const BracketRace = ({
                 disabled={
                   race.status === 'completed' ||
                   isDisqualified ||
+                  isDNS ||
                   (isSecondChanceTwoRacers &&
                     selectedRacers.length === 1 &&
                     !selectedRacers.includes(racer.id) &&
@@ -524,10 +609,11 @@ const BracketRace = ({
                         ? selectedRacers.length === 1 && !selectedRacers.includes(racer.id)
                         : selectedRacers.length === 2 && !selectedRacers.includes(racer.id)) &&
                     'opacity-50',
-                  isDisqualified && 'bg-red-500/10 text-red-600 line-through'
+                  isDisqualified && 'bg-red-500/10 text-red-600 line-through',
+                  isDNS && 'bg-gray-500/10 text-gray-600 line-through'
                 )}
                 onClick={() => {
-                  if (!isDisqualified) {
+                  if (!isDisqualified && !isDNS) {
                     handleRacerSelect(racer.id);
                   }
                 }}
@@ -562,20 +648,76 @@ const BracketRace = ({
                 )}
               </Button>
 
-              {!isDisqualified && race.status !== 'completed' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-auto aspect-square text-red-600 hover:text-red-700 hover:bg-red-100"
-                  onClick={() => handleDisqualify(racer.id)}
-                >
-                  <Ban className="h-4 w-4" />
-                </Button>
+              {!isDisqualified && !isDNS && race.status !== 'completed' && (
+                <>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-auto aspect-square text-red-600 hover:text-red-700 hover:bg-red-100"
+                          onClick={() => handleDisqualify(racer.id)}
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Disqualify Racer (DQ)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-auto aspect-square text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                          onClick={() => handleDNS(racer.id)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Did Not Start (DNS)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
               )}
             </div>
           );
         })}
       </div>
+      <ConfirmationDialog
+        open={showDQDialog}
+        onOpenChange={setShowDQDialog}
+        title="Disqualify Racer"
+        description="Are you sure you want to disqualify this racer? This action cannot be undone."
+        onCancel={() => {
+          setShowDQDialog(false);
+          setSelectedRacerForAction(null);
+        }}
+        onConfirm={handleConfirmDQ}
+        cancelText="Cancel"
+        confirmText="Disqualify"
+        variant="red"
+      />
+      <ConfirmationDialog
+        open={showDNSDialog}
+        onOpenChange={setShowDNSDialog}
+        title="Mark as DNS"
+        description="Are you sure you want to mark this racer as DNS (Did Not Start)? This action cannot be undone."
+        onCancel={() => {
+          setShowDNSDialog(false);
+          setSelectedRacerForAction(null);
+        }}
+        onConfirm={handleConfirmDNS}
+        cancelText="Cancel"
+        confirmText="Mark as DNS"
+        variant="gray"
+      />
     </div>
   );
 };
