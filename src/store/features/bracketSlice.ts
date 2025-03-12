@@ -588,6 +588,64 @@ export const populateNextRoundRaces = (
 
   // Handle 6-racer bracket
   if (totalRacers === 6) {
+    // Check if we need to recalculate race numbers based on second chance racers
+    if (bracketType === 'winners' && currentRound === 1 && raceNumber === 2) {
+      // Get the second chance race (Race 4)
+      const secondChanceRace = rounds.find(
+        (r: BracketRound) => r.bracketType === 'losers' && r.roundNumber === 1
+      )?.races[0];
+
+      // If Race 4 will have 4 racers, we need to add Race 5 and adjust finals to Race 6
+      if (secondChanceRace && secondChanceRace.racers.length + losers.length === 4) {
+        // Add new second chance round (Race 5)
+        const secondChanceRound2Index = rounds.findIndex(
+          (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'losers'
+        );
+
+        if (secondChanceRound2Index === -1) {
+          // Insert new second chance round
+          updatedRounds.push({
+            roundNumber: 2,
+            races: [
+              {
+                raceNumber: 5,
+                racers: [],
+                bracketType: 'losers',
+                round: 2,
+                status: 'pending',
+                position: 0,
+                nextWinnerRace: 6,
+                raceId,
+                raceClass,
+              },
+            ],
+            raceId,
+            raceClass,
+            bracketType: 'losers',
+          });
+
+          // Update finals race number to 6
+          const finalsRound = updatedRounds.find((r: BracketRound) => r.bracketType === 'final');
+          if (finalsRound && finalsRound.races[0]) {
+            finalsRound.races[0].raceNumber = 6;
+          }
+
+          // Update Race 3's nextWinnerRace to point to new finals (Race 6)
+          const race3 = updatedRounds.find(
+            (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'winners'
+          )?.races[0];
+          if (race3) {
+            race3.nextWinnerRace = 6;
+          }
+
+          // Update Race 4's nextWinnerRace to point to Race 5
+          if (secondChanceRace) {
+            secondChanceRace.nextWinnerRace = 5;
+          }
+        }
+      }
+    }
+
     if (bracketType === 'winners' && currentRound === 1) {
       // Find Race 3 (winners round 2)
       const nextRoundIndex = rounds.findIndex(
@@ -616,21 +674,58 @@ export const populateNextRoundRaces = (
           }
         }
       }
-    } else if (bracketType === 'winners' && currentRound === 2) {
-      // Winners from Race 3 go to finals (Race 5)
+    } else if (bracketType === 'winners' && currentRound === 2 && raceNumber === 3) {
+      // Find the finals race
       const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
+
       if (finalsIndex >= 0) {
-        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 5
-        const newWinners = getRacersByIds(racers, winners);
-        finalsRace.racers = [...finalsRace.racers, ...newWinners];
+        const finalsRace = updatedRounds[finalsIndex].races[0];
+
+        if (finalsRace && winners.length === 1) {
+          const winnerRacer = getRacersByIds(racers, winners)[0];
+
+          if (winnerRacer) {
+            finalsRace.racers = finalsRace.racers || [];
+            finalsRace.racers = [...finalsRace.racers, winnerRacer];
+          }
+        }
       }
-    } else if (bracketType === 'losers' && currentRound === 1) {
-      // Winner from Race 4 goes to finals (Race 5)
-      const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
-      if (finalsIndex >= 0) {
-        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 5
-        const newWinners = getRacersByIds(racers, winners);
-        finalsRace.racers = [...finalsRace.racers, ...newWinners];
+    } else if (bracketType === 'losers') {
+      // Handle second chance races
+      if (currentRound === 1) {
+        // Check if Race 5 exists
+        const secondChanceRound2 = rounds.find(
+          (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'losers'
+        );
+
+        if (secondChanceRound2) {
+          // Send winners to Race 5
+          const targetRace = secondChanceRound2.races[0];
+          if (targetRace && winners.length > 0) {
+            const newWinners = getRacersByIds(racers, winners);
+            targetRace.racers = [...targetRace.racers, ...newWinners];
+          }
+        } else {
+          // If no Race 5, winners go directly to finals
+          const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
+          if (finalsIndex >= 0) {
+            const finalsRace = updatedRounds[finalsIndex].races[0];
+            if (finalsRace && winners.length === 1) {
+              const winnerRacer = getRacersByIds(racers, winners)[0];
+              finalsRace.racers = [...(finalsRace.racers || []), winnerRacer];
+            }
+          }
+        }
+      } else if (currentRound === 2) {
+        // Winner from Race 5 goes to finals (Race 6)
+        const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
+        if (finalsIndex >= 0) {
+          const finalsRace = updatedRounds[finalsIndex].races[0];
+          if (finalsRace && winners.length === 1) {
+            const winnerRacer = getRacersByIds(racers, winners)[0];
+            finalsRace.racers = [...(finalsRace.racers || []), winnerRacer];
+          }
+        }
       }
     }
     return updatedRounds;
@@ -874,7 +969,7 @@ export const populateNextRoundRaces = (
   return updatedRounds;
 };
 
-// Add logging to updateRaceResults
+// Add logging to updateRaceResults action creator
 export const updateRaceResults = createAsyncThunk(
   'bracket/updateResults',
   async ({
@@ -1030,6 +1125,9 @@ const bracketSlice = createSlice({
         };
         localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
+      .addCase(updateRaceResults.pending, (state, action) => {
+        // Handle pending state
+      })
       .addCase(updateRaceResults.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, winners, losers, racers } =
           action.payload;
@@ -1050,7 +1148,6 @@ const bracketSlice = createSlice({
                       winners,
                       losers,
                       status: 'completed' as const,
-                      // For finals, also update finalRankings when completing the race
                       ...(bracketType === 'final' && {
                         finalRankings: {
                           first: winners[0],
@@ -1092,6 +1189,9 @@ const bracketSlice = createSlice({
           error: null,
         };
         localStorage.setItem('brackets', JSON.stringify(stateToSave));
+      })
+      .addCase(updateRaceResults.rejected, (state, action) => {
+        // Handle rejected state
       })
       .addCase(updateFinalRankings.fulfilled, (state, action) => {
         const { raceId, raceClass, rankings } = action.payload;
