@@ -11,8 +11,6 @@ export default function Page() {
   const user = useAppSelector(state => state.auth.user);
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
 
-  const cardTitle = 'ASA Racing';
-
   const handleLogout = () => {
     dispatch(logout());
   };
@@ -25,7 +23,7 @@ export default function Page() {
   ) : (
     <>
       <div className="min-h-screen w-full flex items-center justify-center">
-        <MainCard title={cardTitle}>
+        <MainCard>
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center mb-8">Welcome to ASA Racing</h2>
 

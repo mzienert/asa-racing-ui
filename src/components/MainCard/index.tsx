@@ -12,9 +12,7 @@ const MainCard: React.FC<MainCardProps> = ({ children, title }) => {
   return (
     <div className="w-1/2">
       <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
+        <CardHeader />
         <CardContent>{children}</CardContent>
       </Card>
     </div>
