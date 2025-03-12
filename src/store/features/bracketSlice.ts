@@ -594,13 +594,13 @@ export const populateNextRoundRaces = (
       raceNumber,
       winners,
       losers,
-      roundsCount: rounds.length
+      roundsCount: rounds.length,
     });
 
     // Handle first round races (Race 1 and 2)
     if (bracketType === 'winners' && currentRound === 1) {
       console.log('Processing first round race:', raceNumber);
-      
+
       // Find Race 3
       const nextRoundIndex = rounds.findIndex(
         (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'winners'
@@ -633,7 +633,7 @@ export const populateNextRoundRaces = (
       console.log('Processing Race 3:', {
         winners,
         losers,
-        validRacers: racers.length
+        validRacers: racers.length,
       });
 
       // Find the finals race
@@ -666,7 +666,7 @@ export const populateNextRoundRaces = (
         raceNumber,
         currentRound,
         winners,
-        losers
+        losers,
       });
 
       // For Race 4 (first round of second chance)
@@ -953,7 +953,7 @@ export const updateRaceResults = createAsyncThunk(
       round,
       bracketType,
       winners,
-      losers
+      losers,
     });
     return {
       raceId,
@@ -1089,9 +1089,6 @@ const bracketSlice = createSlice({
         };
         localStorage.setItem('brackets', JSON.stringify(stateToSave));
       })
-      .addCase(updateRaceResults.pending, (state, action) => {
-        // Handle pending state
-      })
       .addCase(updateRaceResults.fulfilled, (state, action) => {
         const { raceId, raceClass, raceNumber, round, bracketType, winners, losers, racers } =
           action.payload;
@@ -1103,7 +1100,7 @@ const bracketSlice = createSlice({
           round,
           bracketType,
           winners,
-          losers
+          losers,
         });
 
         if (!state.entities[raceId]?.[raceClass]) {
@@ -1117,7 +1114,7 @@ const bracketSlice = createSlice({
             roundNumber: bracketRound.roundNumber,
             targetRound: round,
             bracketType: bracketRound.bracketType,
-            targetBracketType: bracketType
+            targetBracketType: bracketType,
           });
 
           if (bracketRound.roundNumber === round && bracketRound.bracketType === bracketType) {
@@ -1152,13 +1149,11 @@ const bracketSlice = createSlice({
             roundsLength: updatedRounds.length,
             currentRound: round,
             raceNumber,
-            bracketType
+            bracketType,
           });
 
           // Find Race 3's actual round
-          const race3Round = updatedRounds.find(r => 
-            r.races.some(race => race.raceNumber === 3)
-          );
+          const race3Round = updatedRounds.find(r => r.races.some(race => race.raceNumber === 3));
 
           console.log('Found Race 3 info:', race3Round);
 
@@ -1177,7 +1172,8 @@ const bracketSlice = createSlice({
 
           console.log('After populateNextRoundRaces:', {
             roundsLength: updatedRounds.length,
-            hasChanges: JSON.stringify(state.entities[raceId][raceClass]) !== JSON.stringify(updatedRounds)
+            hasChanges:
+              JSON.stringify(state.entities[raceId][raceClass]) !== JSON.stringify(updatedRounds),
           });
         }
 
@@ -1190,9 +1186,6 @@ const bracketSlice = createSlice({
           error: null,
         };
         localStorage.setItem('brackets', JSON.stringify(stateToSave));
-      })
-      .addCase(updateRaceResults.rejected, (state, action) => {
-        // Handle rejected state
       })
       .addCase(updateFinalRankings.fulfilled, (state, action) => {
         const { raceId, raceClass, rankings } = action.payload;
