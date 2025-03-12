@@ -178,16 +178,6 @@ const BracketRace = ({
   }, [race.bracketType, winners, race.finalRankings, race.racers.length]);
 
   const handleRacerSelect = (racerId: string) => {
-    console.log('handleRacerSelect called:', {
-      racerId,
-      isSixRacersRace3,
-      totalRacers,
-      raceNumber: race.raceNumber,
-      bracketType: race.bracketType,
-      validRacers: validRacers.length,
-      currentSelected: selectedRacers,
-    });
-
     // For finals, handle rankings differently
     if (race.bracketType === 'final') {
       const isSelected = selectedRacers.includes(racerId);
@@ -229,11 +219,6 @@ const BracketRace = ({
 
     // Handle six racers Race 3 case
     if (isSixRacersRace3) {
-      console.log('Handling Race 3 selection:', {
-        isSelected,
-        currentSelected: selectedRacers,
-        maxAllowed: validRacers.length === 2 ? 1 : 2,
-      });
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < (validRacers.length === 2 ? 1 : 2)) {
@@ -527,24 +512,10 @@ const BracketRace = ({
   };
 
   const handleCompleteRace = () => {
-    console.log('handleCompleteRace called:', {
-      isSixRacersRace3,
-      totalRacers,
-      raceNumber: race.raceNumber,
-      bracketType: race.bracketType,
-      selectedRacers,
-      validRacers: validRacers.length,
-    });
-
     // Special handling for races where all racers are DQ'd or DNS
     if (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) {
       // Get remaining racers that aren't in winners array
       const remainingRacers = validRacers.map(racer => racer.id);
-      console.log('All DQ/DNS case - calling onWinnerSelect:', {
-        raceNumber: race.raceNumber,
-        winners: [],
-        remainingRacers,
-      });
       onWinnerSelect(race.raceNumber, [], remainingRacers);
       return;
     }
@@ -563,17 +534,11 @@ const BracketRace = ({
         .filter(racer => !dqDnsRacers.includes(racer.id))
         .map(racer => racer.id);
 
-      console.log('Two DQ/DNS case - calling onWinnerSelect:', {
-        raceNumber: race.raceNumber,
-        winners: remainingRacers,
-        losers: dqDnsRacers,
-      });
       onWinnerSelect(race.raceNumber, remainingRacers, dqDnsRacers);
       return;
     }
 
     if (selectedRacers.length === 0 && !isFirstRoundAllDQorDNS) {
-      console.log('No racers selected, returning');
       return;
     }
 
@@ -595,28 +560,12 @@ const BracketRace = ({
         !isSecondChanceTwoRacers &&
         selectedRacers.length === 2);
 
-    console.log('Validation check:', {
-      isValid,
-      isSixRacersRace3,
-      selectedRacersLength: selectedRacers.length,
-      validationResult: isSixRacersRace3 && selectedRacers.length === 2,
-      validRacersLength: validRacers.length,
-    });
-
     if (!isValid) {
-      console.log('Validation failed, returning');
       return;
     }
 
     const winners = selectedRacers;
     const losers = validRacers.filter(racer => !winners.includes(racer.id)).map(racer => racer.id);
-
-    console.log('Calling onWinnerSelect:', {
-      raceNumber: race.raceNumber,
-      winners,
-      losers,
-      round: race.round,
-    });
 
     // Call onWinnerSelect with the complete race information
     onWinnerSelect(race.raceNumber, winners, losers);
@@ -948,30 +897,10 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     selectedWinners: string[],
     selectedLosers: string[]
   ) => {
-    console.log('handleWinnerSelect called:', {
-      raceClass,
-      raceNumber,
-      round,
-      bracketType,
-      selectedWinners,
-      selectedLosers,
-    });
-
     // Get the racers for this class
     const classRacers = racersByClass[raceClass] || [];
 
     try {
-      // Dispatch the race results update
-      console.log('Dispatching updateRaceResults:', {
-        raceId: race.id,
-        raceClass,
-        raceNumber,
-        round,
-        bracketType,
-        winners: selectedWinners,
-        losers: selectedLosers,
-      });
-
       dispatch(
         updateRaceResults({
           raceId: race.id,
@@ -985,7 +914,6 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
         })
       )
         .then(() => {
-          console.log('updateRaceResults dispatch successful');
           // Update the winners state for this race
           setRaceWinners(prev => {
             const newState = {
@@ -999,10 +927,10 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           });
         })
         .catch(error => {
-          console.error('Error in updateRaceResults dispatch:', error);
+          // Handle error silently
         });
     } catch (error) {
-      console.error('Error in handleWinnerSelect:', error);
+      // Handle error silently
     }
   };
 
