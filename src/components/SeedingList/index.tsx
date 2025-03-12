@@ -162,7 +162,7 @@ const SeedingList = ({
               )}
             </div>
           </div>
-          
+
           {status === RaceClassStatus.Seeding && activeRacerId === racer.id && (
             <div className="p-3 pt-0 border-t border-muted/20">
               <div className="flex items-center gap-2">
@@ -177,24 +177,24 @@ const SeedingList = ({
                           mask: IMask.MaskedRange,
                           from: 0,
                           to: 59,
-                          maxLength: 2
+                          maxLength: 2,
                         },
                         ss: {
                           mask: IMask.MaskedRange,
                           from: 0,
                           to: 59,
-                          maxLength: 2
+                          maxLength: 2,
                         },
                         ms: {
                           mask: IMask.MaskedRange,
                           from: 0,
                           to: 999,
-                          maxLength: 3
-                        }
+                          maxLength: 3,
+                        },
                       },
                       lazy: false,
-                      pattern: 'mm:ss:ms'
-                    }
+                      pattern: 'mm:ss:ms',
+                    },
                   ]}
                   unmask={false}
                   placeholder="00:00:000"
@@ -225,7 +225,7 @@ const SeedingList = ({
           )}
         </div>
       ))}
-      
+
       {status === RaceClassStatus.Seeding && (
         <div className="flex justify-start mt-4">
           <Button
