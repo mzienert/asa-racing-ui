@@ -293,7 +293,7 @@ export const generateFullBracketStructure = (
           nextWinnerRace: 6, // Winners go to Race 6
           raceId,
           raceClass,
-        }
+        },
       ],
       raceId,
       raceClass,
@@ -314,7 +314,7 @@ export const generateFullBracketStructure = (
           nextWinnerRace: 8, // Winners go to finals
           raceId,
           raceClass,
-        }
+        },
       ],
       raceId,
       raceClass,
@@ -335,7 +335,7 @@ export const generateFullBracketStructure = (
           nextWinnerRace: 8, // Winners go to Race 8
           raceId,
           raceClass,
-        }
+        },
       ],
       raceId,
       raceClass,
@@ -356,7 +356,7 @@ export const generateFullBracketStructure = (
           nextWinnerRace: 9, // Winner goes to finals
           raceId,
           raceClass,
-        }
+        },
       ],
       raceId,
       raceClass,
@@ -376,7 +376,7 @@ export const generateFullBracketStructure = (
           position: 0,
           raceId,
           raceClass,
-        }
+        },
       ],
       raceId,
       raceClass,
@@ -572,21 +572,21 @@ export const populateNextRoundRaces = (
   bracketType: 'winners' | 'losers' | 'final'
 ): BracketRound[] => {
   const updatedRounds = [...rounds];
-  
+
   // Calculate total racers
   let totalRacers = 0;
   const firstRoundWinners = rounds.find(
     (r: BracketRound) => r.roundNumber === 1 && r.bracketType === 'winners'
   );
-  
+
   if (firstRoundWinners) {
     firstRoundWinners.races.forEach(race => {
       totalRacers += race.racers.length;
     });
   }
 
-  // Handle 6-racer bracket
-  if (totalRacers === 6) {
+  // Handle 7-racer bracket
+  if (totalRacers === 7) {
     if (bracketType === 'winners' && currentRound === 1) {
       // Find Race 3 (winners round 2)
       const nextRoundIndex = rounds.findIndex(
@@ -616,18 +616,30 @@ export const populateNextRoundRaces = (
         }
       }
     } else if (bracketType === 'winners' && currentRound === 2) {
-      // Winners from Race 3 go to finals (Race 5)
+      // Winners from Race 3 go to finals (Race 6)
       const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
       if (finalsIndex >= 0) {
-        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 5
+        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 6
         const newWinners = getRacersByIds(racers, winners);
         finalsRace.racers = [...finalsRace.racers, ...newWinners];
       }
     } else if (bracketType === 'losers' && currentRound === 1) {
-      // Winner from Race 4 goes to finals (Race 5)
+      // For Race 4, send two winners to Race 5
+      const nextRoundIndex = rounds.findIndex(
+        (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'losers'
+      );
+      if (nextRoundIndex >= 0) {
+        const targetRace = updatedRounds[nextRoundIndex].races[0]; // Race 5
+        if (targetRace) {
+          const newWinners = getRacersByIds(racers, winners);
+          targetRace.racers = [...targetRace.racers, ...newWinners];
+        }
+      }
+    } else if (bracketType === 'losers' && currentRound === 2) {
+      // Winner from Race 5 goes to finals (Race 6)
       const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
       if (finalsIndex >= 0) {
-        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 5
+        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 6
         const newWinners = getRacersByIds(racers, winners);
         finalsRace.racers = [...finalsRace.racers, ...newWinners];
       }
@@ -643,7 +655,7 @@ export const populateNextRoundRaces = (
         const nextRoundIndex = rounds.findIndex(
           (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'winners'
         );
-        
+
         if (nextRoundIndex >= 0) {
           // Find Race 4 and Race 5
           const race4 = updatedRounds[nextRoundIndex].races.find(r => r.raceNumber === 4);
@@ -652,7 +664,7 @@ export const populateNextRoundRaces = (
           if (race4 && race5) {
             // Get all winners from this race
             const newWinners = getRacersByIds(racers, winners);
-            
+
             // For Race 1
             if (raceNumber === 1) {
               // First winner goes to Race 4

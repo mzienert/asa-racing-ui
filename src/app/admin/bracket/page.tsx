@@ -202,6 +202,16 @@ const BracketRace = ({
       return;
     }
 
+    // Special case for Race 5 in 7-racer bracket (second chance round 2)
+    if (totalRacers === 7 && race.raceNumber === 5 && race.bracketType === 'losers') {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
+      }
+      return;
+    }
+
     if (isSixRacersRace4 || (isSecondChanceTwoRacers && !isSevenRacersRace5)) {
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
