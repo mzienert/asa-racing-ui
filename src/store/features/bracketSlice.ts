@@ -647,6 +647,68 @@ export const populateNextRoundRaces = (
     return updatedRounds;
   }
 
+  // Handle 8-racer bracket
+  if (totalRacers === 8) {
+    if (bracketType === 'winners' && currentRound === 1) {
+      // Find Race 3 (winners round 2)
+      const nextRoundIndex = rounds.findIndex(
+        (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'winners'
+      );
+
+      if (nextRoundIndex >= 0) {
+        const targetRace = updatedRounds[nextRoundIndex].races[0]; // Race 3
+        if (targetRace) {
+          // Add winners to Race 3
+          const newWinners = getRacersByIds(racers, winners);
+          targetRace.racers = [...targetRace.racers, ...newWinners];
+        }
+      }
+
+      // Send losers to Race 4 (second chance)
+      if (losers.length > 0) {
+        const loserRoundIndex = rounds.findIndex(
+          (r: BracketRound) => r.roundNumber === 1 && r.bracketType === 'losers'
+        );
+        if (loserRoundIndex >= 0) {
+          const targetRace = updatedRounds[loserRoundIndex].races[0]; // Race 4
+          if (targetRace) {
+            const newLosers = getRacersByIds(racers, losers);
+            targetRace.racers = [...targetRace.racers, ...newLosers];
+          }
+        }
+      }
+    } else if (bracketType === 'winners' && currentRound === 2) {
+      // Winners from Race 3 go to finals (Race 6)
+      const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
+      if (finalsIndex >= 0) {
+        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 6
+        const newWinners = getRacersByIds(racers, winners);
+        finalsRace.racers = [...finalsRace.racers, ...newWinners];
+      }
+    } else if (bracketType === 'losers' && currentRound === 1) {
+      // For Race 4, send two winners to Race 5
+      const nextRoundIndex = rounds.findIndex(
+        (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'losers'
+      );
+      if (nextRoundIndex >= 0) {
+        const targetRace = updatedRounds[nextRoundIndex].races[0]; // Race 5
+        if (targetRace) {
+          const newWinners = getRacersByIds(racers, winners);
+          targetRace.racers = [...targetRace.racers, ...newWinners];
+        }
+      }
+    } else if (bracketType === 'losers' && currentRound === 2) {
+      // Winner from Race 5 goes to finals (Race 6)
+      const finalsIndex = rounds.findIndex((r: BracketRound) => r.bracketType === 'final');
+      if (finalsIndex >= 0) {
+        const finalsRace = updatedRounds[finalsIndex].races[0]; // Race 6
+        const newWinners = getRacersByIds(racers, winners);
+        finalsRace.racers = [...finalsRace.racers, ...newWinners];
+      }
+    }
+    return updatedRounds;
+  }
+
   // Handle 9-racer bracket
   if (totalRacers === 9) {
     if (bracketType === 'winners') {

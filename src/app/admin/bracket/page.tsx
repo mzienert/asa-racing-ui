@@ -118,6 +118,8 @@ const BracketRace = ({
     race.raceNumber === 4 && race.bracketType === 'losers' && validRacers.length === 3;
   const isSevenRacersRace5 =
     race.raceNumber === 5 && race.bracketType === 'losers' && validRacers.length === 2;
+  const isEightRacersRace5 =
+    totalRacers === 8 && race.raceNumber === 5 && race.bracketType === 'losers';
   const isSecondChanceTwoRacers =
     race.bracketType === 'losers' && validRacers.length === 2 && !isSevenRacersRace4;
   const isNineRacersSecondChanceFirstRound =
@@ -198,6 +200,16 @@ const BracketRace = ({
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 3) {
         setSelectedRacers([...selectedRacers, racerId]);
+      }
+      return;
+    }
+
+    // Special case for Race 5 in 8-racer bracket (second chance round 2)
+    if (isEightRacersRace5) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
       }
       return;
     }
