@@ -8,7 +8,7 @@ interface MainCardProps {
   title: string;
 }
 
-const MainCard: React.FC<MainCardProps> = ({ children, title }) => {
+const MainCard: React.FC<MainCardProps> = ({ children }) => {
   return (
     <div className="w-1/2">
       <Card>
