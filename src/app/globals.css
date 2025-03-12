@@ -83,11 +83,9 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground bg-[url('/background.png')] bg-cover bg-center bg-no-repeat;
+    @apply bg-background text-foreground bg-[url('/background.png')] bg-cover bg-center bg-no-repeat bg-fixed;
   }
 }
-
-
 
 @layer base {
   * {

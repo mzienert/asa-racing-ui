@@ -10,7 +10,7 @@ interface MainCardProps {
 
 const MainCard: React.FC<MainCardProps> = ({ children, title }) => {
   return (
-    <div className="w-1/2 mt-48">
+    <div className="w-1/2">
       <Card>
         <CardHeader>
           <CardTitle>{title}</CardTitle>

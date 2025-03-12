@@ -1,7 +1,7 @@
 import { Racer, updatePersistedRacer } from '@/store/features/racersSlice';
 import { IMaskInput } from 'react-imask';
 import IMask from 'imask';
-import { Check, X, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, CheckCircle, Clock, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RaceClassStatus, updatePersistedRace } from '@/store/features/racesSlice';
 import { useDispatch, useSelector } from 'react-redux';

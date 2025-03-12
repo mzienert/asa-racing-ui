@@ -40,12 +40,7 @@ import NoRaceState from '@/components/NoRaceState';
 import { Racer } from '@/store/features/racersSlice';
 import { createSelector } from '@reduxjs/toolkit';
 import ConfirmationDialog from '@/components/ConfirmationDialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface BracketContentProps {
   race: Race;

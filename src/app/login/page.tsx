@@ -140,55 +140,85 @@ export default function Page() {
   };
 
   return (
-    <MainCard title={cardTitle}>
-      <div className="space-y-6 w-full max-w-sm mx-auto">
-        <form onSubmit={handleEmailSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={handleEmailChange}
-              onBlur={handleEmailBlur}
-              disabled={showCode || isEmailSubmitting}
-              className={`w-full ${emailError ? 'border-red-500' : ''}`}
-              maxLength={MAX_EMAIL_LENGTH}
-            />
-            {emailError && (
-              <div className="flex items-center text-red-500 text-sm">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                {emailError}
+    <div className="min-h-screen w-full flex items-center justify-center">
+      <MainCard title={cardTitle}>
+        <div className="space-y-8 w-full max-w-sm mx-auto">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold">Welcome Back</h2>
+            <p className="text-sm text-muted-foreground">
+              Enter your email to receive a secure login code
+            </p>
+          </div>
+
+          <div className="bg-secondary/50 rounded-lg p-6 space-y-6">
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={handleEmailChange}
+                  onBlur={handleEmailBlur}
+                  disabled={showCode || isEmailSubmitting}
+                  className={`w-full ${emailError ? 'border-red-500' : ''}`}
+                  maxLength={MAX_EMAIL_LENGTH}
+                />
+                {emailError && (
+                  <div className="flex items-center text-red-500 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {emailError}
+                  </div>
+                )}
               </div>
+              {!showCode && (
+                <LoadingButton
+                  type="submit"
+                  isLoading={isEmailSubmitting}
+                  text="Send Code"
+                  className="w-full"
+                />
+              )}
+            </form>
+
+            {showCode && (
+              <form onSubmit={handleCodeSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Input
+                    type="text"
+                    placeholder="Enter verification code"
+                    value={code}
+                    onChange={handleCodeChange}
+                    disabled={isCodeSubmitting}
+                    className={`w-full ${verificationError ? 'border-red-500' : ''}`}
+                    maxLength={MAX_CODE_LENGTH}
+                  />
+                  {verificationError && (
+                    <div className="flex items-center text-red-500 text-sm">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      {verificationError}
+                    </div>
+                  )}
+                </div>
+                <LoadingButton
+                  type="submit"
+                  isLoading={isCodeSubmitting}
+                  text="Verify & Login"
+                  className="w-full"
+                />
+              </form>
             )}
           </div>
-          {!showCode && (
-            <LoadingButton type="submit" isLoading={isEmailSubmitting} text="Send Code" />
-          )}
-        </form>
 
-        {showCode && (
-          <form onSubmit={handleCodeSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                type="text"
-                placeholder="Enter verification code"
-                value={code}
-                onChange={handleCodeChange}
-                disabled={isCodeSubmitting}
-                className={`w-full ${verificationError ? 'border-red-500' : ''}`}
-                maxLength={MAX_CODE_LENGTH}
-              />
-              {verificationError && (
-                <div className="flex items-center text-red-500 text-sm">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  {verificationError}
-                </div>
-              )}
-            </div>
-            <LoadingButton type="submit" isLoading={isCodeSubmitting} text="Verify & Login" />
-          </form>
-        )}
-      </div>
-    </MainCard>
+          <div className="text-center">
+            <button
+              onClick={() => router.push('/')}
+              className="text-sm text-primary hover:text-primary/80 underline-offset-4 hover:underline transition-colors"
+            >
+              Back to home
+            </button>
+          </div>
+        </div>
+      </MainCard>
+    </div>
   );
 }
