@@ -25,8 +25,6 @@ export default function Page() {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
 
-  const cardTitle = 'ASA Racing Login';
-
   const validateEmail = (value: string): boolean => {
     if (!EMAIL_REGEX.test(value)) {
       setEmailError('Please enter a valid email address');
@@ -141,7 +139,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center">
-      <MainCard title={cardTitle}>
+      <MainCard>
         <div className="space-y-8 w-full max-w-sm mx-auto">
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-bold">Welcome Back</h2>
