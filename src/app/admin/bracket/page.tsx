@@ -540,52 +540,34 @@ const BracketRace = ({
       const losers = validRacers.map(racer => racer.id);
       // Get remaining racers that aren't in winners array
       const remainingRacers = validRacers.map(racer => racer.id);
+      console.log('All DQ/DNS case - calling onWinnerSelect:', {
+        raceNumber: race.raceNumber,
+        winners: [],
+        remainingRacers
+      });
       onWinnerSelect(race.raceNumber, [], remainingRacers);
-      
-      // Update race status
-      dispatch(
-        updateRaceResults({
-          raceId: race.raceId,
-          raceClass: race.raceClass,
-          raceNumber: race.raceNumber,
-          round: round,
-          bracketType: race.bracketType,
-          winners: [],
-          losers: remainingRacers,
-          racers: validRacers,
-        })
-      );
       return;
     }
 
     // Special handling for races where exactly 2 racers are DQ'd or DNS'd in first round
     if (isFirstRoundTwoRacersDQorDNS) {
       // Get the DQ'd/DNS'd racers
-      const dqDnsRacers = validRacers.filter(racer => 
-        race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
-      ).map(racer => racer.id);
+      const dqDnsRacers = validRacers
+        .filter(racer => 
+          race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+        ).map(racer => racer.id);
 
       // Get the remaining racers (not DQ'd or DNS'd)
       const remainingRacers = validRacers
         .filter(racer => !dqDnsRacers.includes(racer.id))
         .map(racer => racer.id);
 
-      // The remaining racers are winners, DQ'd/DNS'd racers go to second chance
+      console.log('Two DQ/DNS case - calling onWinnerSelect:', {
+        raceNumber: race.raceNumber,
+        winners: remainingRacers,
+        losers: dqDnsRacers
+      });
       onWinnerSelect(race.raceNumber, remainingRacers, dqDnsRacers);
-      
-      // Update race status
-      dispatch(
-        updateRaceResults({
-          raceId: race.raceId,
-          raceClass: race.raceClass,
-          raceNumber: race.raceNumber,
-          round: round,
-          bracketType: race.bracketType,
-          winners: remainingRacers,
-          losers: dqDnsRacers,
-          racers: validRacers,
-        })
-      );
       return;
     }
 
@@ -594,88 +576,44 @@ const BracketRace = ({
       return;
     }
 
-    // Special handling for finals
-    if (race.bracketType === 'final') {
-      const sortedRacers = [...selectedRacers].sort((a, b) => rankings[a] - rankings[b]);
+    // Validate selected racers count based on race type
+    const isValid =
+      (isSixRacersRace3 && ((validRacers.length === 2 && selectedRacers.length === 1) || (validRacers.length > 2 && selectedRacers.length === 2))) ||
+      (isNineRacersSecondRound && selectedRacers.length === 2) ||
+      (isNineRacersThirdRound && selectedRacers.length === 2) ||
+      (isSixRacersRace4 && selectedRacers.length === 1) ||
+      (isSevenRacersRace4 && selectedRacers.length === 2) ||
+      ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
+        selectedRacers.length === 1) ||
+      (!isSixRacersRace3 &&
+        !isSixRacersRace4 &&
+        !isSevenRacersRace4 &&
+        !isSevenRacersRace5 &&
+        !isSecondChanceTwoRacers &&
+        selectedRacers.length === 2);
 
-      // Special case: If this is Race 6 (finals) and we only have 2 racers
-      // (happens when Race 1 had all DQ/DNS), we only need 2 positions filled
-      const isTwoRacerFinals = race.racers.length === 2;
-      const requiredPositions = isTwoRacerFinals ? 2 : race.racers.length === 3 ? 3 : 4;
+    console.log('Validation check:', {
+      isValid,
+      isSixRacersRace3,
+      selectedRacersLength: selectedRacers.length,
+      validationResult: isSixRacersRace3 && selectedRacers.length === 2,
+      validRacersLength: validRacers.length
+    });
 
-      if (sortedRacers.length !== requiredPositions) {
-        return;
-      }
-
-      const finalRankings = {
-        first: sortedRacers[0],
-        second: sortedRacers[1],
-        third: isTwoRacerFinals ? sortedRacers[1] : sortedRacers[2],
-        fourth: isTwoRacerFinals
-          ? sortedRacers[1]
-          : race.racers.length > 3
-            ? sortedRacers[3]
-            : undefined,
-      };
-
-      if (onFinalRankings) {
-        onFinalRankings({
-          first: finalRankings.first!,
-          second: finalRankings.second!,
-          third: finalRankings.third!,
-          fourth: finalRankings.fourth || finalRankings.third!,
-        });
-      }
-      setSelectedRacers([]);
-      setRankings({});
-      return;
-    }
-
-    // Special case for Race 6 in 9-racer bracket
-    if (totalRacers === 9 && race.raceNumber === 6) {
-      if (selectedRacers.length !== 3) {
-        return;
-      }
-    } else {
-      // Validate selected racers count based on race type
-      const isValid =
-        (isSixRacersRace3 && ((validRacers.length === 2 && selectedRacers.length === 1) || (validRacers.length > 2 && selectedRacers.length === 2))) ||
-        (isNineRacersSecondRound && selectedRacers.length === 2) ||
-        (isNineRacersThirdRound && selectedRacers.length === 2) ||
-        (isSixRacersRace4 && selectedRacers.length === 1) ||
-        (isSevenRacersRace4 && selectedRacers.length === 2) ||
-        ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
-          selectedRacers.length === 1) ||
-        (!isSixRacersRace3 &&
-          !isSixRacersRace4 &&
-          !isSevenRacersRace4 &&
-          !isSevenRacersRace5 &&
-          !isSecondChanceTwoRacers &&
-          selectedRacers.length === 2);
-
-      console.log('Validation check:', {
-        isValid,
-        isSixRacersRace3,
-        selectedRacersLength: selectedRacers.length,
-        validationResult: isSixRacersRace3 && selectedRacers.length === 2
-      });
-
-      if (!isValid) {
-        console.log('Validation failed, returning');
-        return;
-      }
-    }
-
-    if (isNineRacersSecondChanceFirstRound && selectedRacers.length !== 2) {
-      return;
-    }
-
-    if (isNineRacersSecondChanceSecondRound && selectedRacers.length !== 1) {
+    if (!isValid) {
+      console.log('Validation failed, returning');
       return;
     }
 
     const winners = selectedRacers;
     const losers = validRacers.filter(racer => !winners.includes(racer.id)).map(racer => racer.id);
+
+    console.log('Calling onWinnerSelect:', {
+      raceNumber: race.raceNumber,
+      winners,
+      losers,
+      round: race.round
+    });
 
     // Call onWinnerSelect with the complete race information
     onWinnerSelect(race.raceNumber, winners, losers);
@@ -997,11 +935,11 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
   // Then calculate if we need second round for second chance
   const firstRoundLosers = winnersBrackets
     .filter(b => b.roundNumber === 1)
-    .reduce(
-      (total, round) =>
-        round.races.reduce((raceTotal, race) => raceTotal + (race.losers?.length || 0), total),
-      0
-    );
+    .reduce((total, round) => {
+      return total + round.races.reduce((raceTotal, race) => {
+        return raceTotal + (race.losers?.length || 0);
+      }, 0);
+    }, 0);
   const needsSecondChanceSecondRound = firstRoundLosers > 2;
 
   const handleWinnerSelect = (
@@ -1012,51 +950,30 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     selectedWinners: string[],
     selectedLosers: string[]
   ) => {
-    // Special case for Race 6 in 9-racer bracket
-    if (totalRacers === 9 && raceNumber === 6) {
-      if (selectedWinners.length !== 3) {
-        return;
-      }
-    } else {
-      // Validate the winners and losers based on race type
-      const isSevenRacersRace4 = raceNumber === 4 && bracketType === 'losers' && totalRacers === 7;
-      const isSevenRacersRace5 = raceNumber === 5 && bracketType === 'losers' && totalRacers === 7;
-      const isSecondChanceTwoRacers =
-        bracketType === 'losers' && selectedWinners.length + selectedLosers.length === 2;
-      const isSixRacersRace3 = totalRacers === 6 && raceNumber === 3 && bracketType === 'winners';
-
-      if (isSevenRacersRace4 && selectedWinners.length !== 2) {
-        return;
-      }
-
-      if (
-        (isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
-        selectedWinners.length !== 1
-      ) {
-        return;
-      }
-
-      if (isSixRacersRace3 && selectedWinners.length !== 1) {
-        return;
-      }
-
-      if (
-        !isSevenRacersRace4 &&
-        !isSevenRacersRace5 &&
-        !isSecondChanceTwoRacers &&
-        !isSixRacersRace3 &&
-        bracketType !== 'final' &&
-        selectedWinners.length !== 2
-      ) {
-        return;
-      }
-    }
+    console.log('handleWinnerSelect called:', {
+      raceClass,
+      raceNumber,
+      round,
+      bracketType,
+      selectedWinners,
+      selectedLosers
+    });
 
     // Get the racers for this class
     const classRacers = racersByClass[raceClass] || [];
 
     try {
       // Dispatch the race results update
+      console.log('Dispatching updateRaceResults:', {
+        raceId: race.id,
+        raceClass,
+        raceNumber,
+        round,
+        bracketType,
+        winners: selectedWinners,
+        losers: selectedLosers
+      });
+
       dispatch(
         updateRaceResults({
           raceId: race.id,
@@ -1070,6 +987,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
         })
       )
         .then(() => {
+          console.log('updateRaceResults dispatch successful');
           // Update the winners state for this race
           setRaceWinners(prev => {
             const newState = {
@@ -1083,10 +1001,10 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
           });
         })
         .catch(error => {
-          // Handle error silently
+          console.error('Error in updateRaceResults dispatch:', error);
         });
     } catch (error) {
-      // Handle error silently
+      console.error('Error in handleWinnerSelect:', error);
     }
   };
 
