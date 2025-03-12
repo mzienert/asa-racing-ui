@@ -1,6 +1,7 @@
 import { Racer, updatePersistedRacer } from '@/store/features/racersSlice';
 import { IMaskInput } from 'react-imask';
-import { Check, X, CheckCircle } from 'lucide-react';
+import IMask from 'imask';
+import { Check, X, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RaceClassStatus, updatePersistedRace } from '@/store/features/racesSlice';
 import { useDispatch, useSelector } from 'react-redux';
@@ -34,6 +35,7 @@ const SeedingList = ({
 }: SeedingListProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [activeRacerId, setActiveRacerId] = useState<string | null>(null);
 
   // Get the current race from the store
   const race = useSelector((state: RootState) => {
@@ -107,6 +109,10 @@ const SeedingList = ({
     }
   };
 
+  const handleRowClick = (racerId: string) => {
+    setActiveRacerId(activeRacerId === racerId ? null : racerId);
+  };
+
   if (racers.length === 0) {
     return (
       <div className="text-left text-muted-foreground bg-muted/20 p-6 rounded-md">
@@ -120,49 +126,106 @@ const SeedingList = ({
       {racers.map(racer => (
         <div
           key={racer.id}
-          className="flex items-center justify-between p-3 rounded-md transition-colors bg-muted/30"
+          className={`rounded-md transition-all duration-200 ${
+            activeRacerId === racer.id ? 'bg-muted/50' : 'bg-muted/30'
+          }`}
         >
-          <div className="flex items-center gap-4">
-            <span className="font-medium text-primary">#{racer.bibNumber}</span>
-            <span>{racer.name}</span>
-            {status !== RaceClassStatus.Seeding && racer.seedData?.time && (
-              <span className="text-muted-foreground">Time: {racer.seedData.time}</span>
-            )}
-          </div>
-          {status === RaceClassStatus.Seeding && (
+          <div
+            onClick={() => status === RaceClassStatus.Seeding && handleRowClick(racer.id)}
+            className={`flex items-center justify-between p-3 ${
+              status === RaceClassStatus.Seeding ? 'cursor-pointer hover:bg-muted/40' : ''
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <span className="font-medium text-primary">#{racer.bibNumber}</span>
+              <span>{racer.name}</span>
+            </div>
             <div className="flex items-center gap-2">
-              <IMaskInput
-                name={`time-${racer.id}`}
-                className="w-32 px-3 py-1 rounded-md border border-input bg-background"
-                mask="00:00:000"
-                definitions={{
-                  '0': /[0-9]/,
-                }}
-                unmask={false}
-                placeholder="00:00:000"
-                value={seedTimes[racer.id] || ''}
-                onAccept={value => onAcceptTime(racer.id, value)}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                onClick={() => onSaveTime(racer.id, raceClass)}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={() => onClearTime(racer.id)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {status === RaceClassStatus.Seeding && (
+                <>
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {racer.seedData?.time || 'Add time'}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      activeRacerId === racer.id ? 'rotate-180' : ''
+                    }`}
+                  />
+                </>
+              )}
+              {status !== RaceClassStatus.Seeding && racer.seedData?.time && (
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {racer.seedData.time}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {status === RaceClassStatus.Seeding && activeRacerId === racer.id && (
+            <div className="p-3 pt-0 border-t border-muted/20">
+              <div className="flex items-center gap-2">
+                <IMaskInput
+                  name={`time-${racer.id}`}
+                  className="w-32 px-3 py-1 rounded-md border border-input bg-background"
+                  mask={[
+                    {
+                      mask: '00:00:000',
+                      blocks: {
+                        mm: {
+                          mask: IMask.MaskedRange,
+                          from: 0,
+                          to: 59,
+                          maxLength: 2
+                        },
+                        ss: {
+                          mask: IMask.MaskedRange,
+                          from: 0,
+                          to: 59,
+                          maxLength: 2
+                        },
+                        ms: {
+                          mask: IMask.MaskedRange,
+                          from: 0,
+                          to: 999,
+                          maxLength: 3
+                        }
+                      },
+                      lazy: false,
+                      pattern: 'mm:ss:ms'
+                    }
+                  ]}
+                  unmask={false}
+                  placeholder="00:00:000"
+                  value={seedTimes[racer.id] || ''}
+                  onAccept={value => onAcceptTime(racer.id, value)}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => {
+                    onSaveTime(racer.id, raceClass);
+                    setActiveRacerId(null);
+                  }}
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => onClearTime(racer.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </div>
       ))}
+      
       {status === RaceClassStatus.Seeding && (
         <div className="flex justify-start mt-4">
           <Button
