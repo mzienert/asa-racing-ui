@@ -869,30 +869,30 @@ export const populateNextRoundRaces = (
   // Get the winner and loser racers
   const winnerRacers = getRacersByIds(racers, winners);
   const loserRacers = getRacersByIds(racers, losers);
-  
-  // Special case for 1-2 racers - they're already in the finals, so just update the race
-  if (racers.length <= 2 && bracketType === 'final') {
-    if (currentRace.finalRankings) {
-      if (winners.length > 0) currentRace.finalRankings.first = winners[0];
-      if (winners.length > 1) currentRace.finalRankings.second = winners[1];
-      if (losers.length > 0) currentRace.finalRankings.third = losers[0];
+
+  // Special case for Race 3 with only 2 racers - winner goes directly to finals
+  const isRaceThreeWithTwoRacers = 
+    raceNumber === 3 && 
+    bracketType === 'winners' && 
+    currentRace.racers.length === 2;
+
+  if (isRaceThreeWithTwoRacers) {
+    console.log('Race 3 with 2 racers - winner going directly to finals');
+    // Find the finals race (Race 7)
+    const finalsRound = updatedRounds.find((r: BracketRound) => r.bracketType === 'final');
+    if (finalsRound && finalsRound.races.length > 0) {
+      const finalsRace = finalsRound.races[0];
+      // Add winner to finals
+      finalsRace.racers = [...finalsRace.racers, ...winnerRacers];
+      
+      // Clear the nextWinnerRace to prevent normal progression
+      currentRace.nextWinnerRace = undefined;
+      return updatedRounds;
     }
-    return updatedRounds;
   }
-  
-  // If this is a final race, update the final rankings and return
-  if (bracketType === 'final') {
-    if (currentRace.finalRankings) {
-      currentRace.finalRankings.first = winners[0];
-      if (winners.length > 1) currentRace.finalRankings.second = winners[1];
-      if (losers.length > 0) currentRace.finalRankings.third = losers[0];
-      if (losers.length > 1) currentRace.finalRankings.fourth = losers[1];
-    }
-    return updatedRounds;
-  }
-  
-  // Handle progression to next round
-  if (currentRace.nextWinnerRace) {
+
+  // Handle progression to next round (only if not Race 3 with 2 racers)
+  if (!isRaceThreeWithTwoRacers && currentRace.nextWinnerRace) {
     // Find the next race
     const nextRace = findRaceByNumber(updatedRounds, currentRace.nextWinnerRace);
     

@@ -233,6 +233,21 @@ const BracketRace = ({
 
     const isSelected = selectedRacers.includes(racerId);
 
+    // Special case for Race 3 when it has only 2 racers
+    const isRaceThreeWithTwoRacers = 
+      race.raceNumber === 3 && 
+      race.bracketType === 'winners' && 
+      validRacers.length === 2;
+
+    if (isRaceThreeWithTwoRacers) {
+      if (isSelected) {
+        setSelectedRacers(selectedRacers.filter(id => id !== racerId));
+      } else if (selectedRacers.length < 1) {
+        setSelectedRacers([racerId]);
+      }
+      return;
+    }
+
     // Handle six racers Race 3 case
     if (isSixRacersRace3) {
       if (isSelected) {
@@ -633,8 +648,15 @@ const BracketRace = ({
       return;
     }
 
+    // Special case for Race 3 with only 2 racers
+    const isRaceThreeWithTwoRacers = 
+      race.raceNumber === 3 && 
+      race.bracketType === 'winners' && 
+      validRacers.length === 2;
+
     // Validate selected racers count based on race type
     const isValid =
+      (isRaceThreeWithTwoRacers && selectedRacers.length === 1) ||
       (isSixRacersRace3 &&
         ((validRacers.length === 2 && selectedRacers.length === 1) ||
           (validRacers.length > 2 && selectedRacers.length === 2))) ||
@@ -649,6 +671,7 @@ const BracketRace = ({
         !isSevenRacersRace4 &&
         !isSevenRacersRace5 &&
         !isSecondChanceTwoRacers &&
+        !isRaceThreeWithTwoRacers &&
         selectedRacers.length === 2);
 
     console.log('Race completion validation:', {
@@ -656,6 +679,7 @@ const BracketRace = ({
       isSixRacersRace3,
       validRacersLength: validRacers.length,
       selectedRacersLength: selectedRacers.length,
+      isRaceThreeWithTwoRacers
     });
 
     if (!isValid) {
@@ -670,6 +694,13 @@ const BracketRace = ({
       winners,
       losers,
     });
+
+    // Special case for Race 3 with only 2 racers - winner goes directly to finals
+    if (isRaceThreeWithTwoRacers) {
+      console.log('Race 3 with 2 racers - winner going directly to finals');
+      // The winner should go to the finals (Race 7)
+      race.nextWinnerRace = 7;
+    }
 
     // Call onWinnerSelect with the complete race information
     onWinnerSelect(race.raceNumber, winners, losers);
