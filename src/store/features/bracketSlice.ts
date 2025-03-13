@@ -572,24 +572,61 @@ export const populateNextRoundRaces = (
   raceNumber: number,
   bracketType: 'winners' | 'losers' | 'final'
 ): BracketRound[] => {
+  console.log('populateNextRoundRaces called with:', {
+    currentRound,
+    raceNumber,
+    bracketType,
+    winners,
+    losers,
+    racers: racers.map(r => ({ id: r.id, name: r.name }))
+  });
+
   const updatedRounds = [...rounds];
 
-  // Calculate total racers
+  // Calculate total active racers (excluding DQ/DNS)
   let totalRacers = 0;
   const firstRoundWinners = rounds.find(
     (r: BracketRound) => r.roundNumber === 1 && r.bracketType === 'winners'
   );
 
   if (firstRoundWinners) {
+    // Get all DQ'd and DNS racers from first round
+    const dqRacers = new Set<string>();
+    const dnsRacers = new Set<string>();
+    
     firstRoundWinners.races.forEach(race => {
-      totalRacers += race.racers.length;
+      if (race.disqualifiedRacers) {
+        race.disqualifiedRacers.forEach(id => dqRacers.add(id));
+      }
+      if (race.dnsRacers) {
+        race.dnsRacers.forEach(id => dnsRacers.add(id));
+      }
+    });
+
+    console.log('DQ/DNS counts:', {
+      dqCount: dqRacers.size,
+      dnsCount: dnsRacers.size
+    });
+
+    // Calculate total active racers
+    firstRoundWinners.races.forEach(race => {
+      const activeRacers = race.racers.filter(racer => 
+        !dqRacers.has(racer.id) && !dnsRacers.has(racer.id)
+      );
+      totalRacers += activeRacers.length;
     });
   }
 
-  // Handle 6-racer bracket
-  if (totalRacers === 6) {
+  console.log('Total active racers calculated:', totalRacers);
+
+  // Handle 6-racer bracket (or effectively 6 racers due to DQ/DNS)
+  if (totalRacers <= 6) {
+    console.log('Handling 6-or-fewer-racer bracket');
+    
     // Handle first round races (Race 1 and 2)
     if (bracketType === 'winners' && currentRound === 1) {
+      console.log('Handling winners bracket round 1, race:', raceNumber);
+      
       // Find Race 3
       const nextRoundIndex = rounds.findIndex(
         (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'winners'
@@ -600,6 +637,7 @@ export const populateNextRoundRaces = (
         if (race3) {
           const newWinners = getRacersByIds(racers, winners);
           race3.racers = [...(race3.racers || []), ...newWinners];
+          console.log('Added winners to Race 3:', newWinners.map(r => r.name));
         }
       }
 
@@ -613,6 +651,91 @@ export const populateNextRoundRaces = (
           if (race4) {
             const newLosers = getRacersByIds(racers, losers);
             race4.racers = [...(race4.racers || []), ...newLosers];
+            
+            console.log('Race 4 current state:', {
+              totalRacers: race4.racers.length,
+              racerNames: race4.racers.map(r => r.name)
+            });
+
+            // After Race 2 is completed, check if Race 4 has more than 4 racers
+            if (raceNumber === 2 && race4.racers.length > 4) {
+              console.log('Race 2 completed and Race 4 has more than 4 racers. Recalculating brackets...');
+              
+              // Create new array without second chance rounds
+              const filteredRounds = updatedRounds.filter(round => round.bracketType !== 'losers');
+              console.log('Removed existing second chance rounds. Remaining round types:', 
+                filteredRounds.map(r => r.bracketType));
+              
+              // Create new first round of second chance (split into two races)
+              const newSecondChanceFirstRound: BracketRound = {
+                roundNumber: 1,
+                races: [
+                  {
+                    raceNumber: 4,
+                    racers: race4.racers.slice(0, 3),
+                    bracketType: 'losers',
+                    round: 1,
+                    status: 'pending',
+                    position: 0,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 6 // Will feed into Race 6
+                  },
+                  {
+                    raceNumber: 5,
+                    racers: race4.racers.slice(3),
+                    bracketType: 'losers',
+                    round: 1,
+                    status: 'pending',
+                    position: 1,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 6 // Will feed into Race 6
+                  }
+                ],
+                raceId,
+                raceClass,
+                bracketType: 'losers'
+              };
+
+              console.log('Created new Race 4 with racers:', newSecondChanceFirstRound.races[0].racers.map(r => r.name));
+              console.log('Created new Race 5 with racers:', newSecondChanceFirstRound.races[1].racers.map(r => r.name));
+
+              // Create new second round of second chance
+              const newSecondChanceSecondRound: BracketRound = {
+                roundNumber: 2,
+                races: [
+                  {
+                    raceNumber: 6,
+                    racers: [],
+                    bracketType: 'losers',
+                    round: 2,
+                    status: 'pending',
+                    position: 0,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 7 // Will feed into finals (Race 7)
+                  }
+                ],
+                raceId,
+                raceClass,
+                bracketType: 'losers'
+              };
+
+              // Add new second chance rounds to filtered rounds
+              filteredRounds.push(newSecondChanceFirstRound);
+              filteredRounds.push(newSecondChanceSecondRound);
+
+              // Update finals race number if it exists
+              const finalsRound = filteredRounds.find((r: BracketRound) => r.bracketType === 'final');
+              if (finalsRound && finalsRound.races.length > 0) {
+                finalsRound.races[0].raceNumber = 7; // Finals becomes Race 7
+                console.log('Updated finals race number to 7');
+              }
+
+              console.log('Returning recalculated bracket structure');
+              return filteredRounds;
+            }
           }
         }
       }
@@ -627,30 +750,41 @@ export const populateNextRoundRaces = (
         }
       }
 
-      // Only send losers to Race 4 if there are exactly 2 racers in Race 3
+      // Only send losers to second chance if there are exactly 2 racers in Race 3
       if (losers.length > 0 && racers.length === 2) {
         const secondChanceRound = updatedRounds.find(
           (r: BracketRound) => r.bracketType === 'losers' && r.roundNumber === 1
         );
         if (secondChanceRound) {
-          const race4 = secondChanceRound.races[0];
-          if (race4) {
+          // Find the race with fewer racers
+          const targetRace = secondChanceRound.races
+            .filter(race => race.racers.length < 3)
+            .sort((a, b) => a.racers.length - b.racers.length)[0];
+            
+          if (targetRace) {
             const newLosers = getRacersByIds(racers, losers);
-            race4.racers = [...(race4.racers || []), ...newLosers];
+            targetRace.racers = [...(targetRace.racers || []), ...newLosers];
           }
         }
       }
     } else if (bracketType === 'losers') {
-      // For Race 4 (first round of second chance)
-      if (raceNumber === 4 && currentRound === 1) {
-        // Find the finals race
+      if (currentRound === 1) {
+        // Find Race 6 (second round of second chance)
+        const nextRound = updatedRounds.find(
+          (r: BracketRound) => r.roundNumber === 2 && r.bracketType === 'losers'
+        );
+        if (nextRound && nextRound.races.length > 0) {
+          const race6 = nextRound.races[0];
+          const newWinners = getRacersByIds(racers, winners);
+          race6.racers = [...(race6.racers || []), ...newWinners];
+        }
+      } else if (currentRound === 2) {
+        // Send winner from Race 6 to finals (Race 7)
         const finalsRound = updatedRounds.find((r: BracketRound) => r.bracketType === 'final');
-        if (finalsRound) {
+        if (finalsRound && finalsRound.races.length > 0) {
           const finalsRace = finalsRound.races[0];
-          if (finalsRace) {
-            const newWinners = getRacersByIds(racers, winners);
-            finalsRace.racers = [...(finalsRace.racers || []), ...newWinners];
-          }
+          const newWinners = getRacersByIds(racers, winners);
+          finalsRace.racers = [...(finalsRace.racers || []), ...newWinners];
         }
       }
     }
@@ -659,6 +793,7 @@ export const populateNextRoundRaces = (
 
   // Handle 7-racer bracket
   if (totalRacers === 7) {
+    console.log('Handling 7-racer bracket');
     if (bracketType === 'winners' && currentRound === 1) {
       // Find Race 3 (winners round 2)
       const nextRoundIndex = rounds.findIndex(
@@ -671,6 +806,7 @@ export const populateNextRoundRaces = (
           // Add winners to Race 3
           const newWinners = getRacersByIds(racers, winners);
           targetRace.racers = [...targetRace.racers, ...newWinners];
+          console.log('Added winners to Race 3:', newWinners.map(r => r.name));
         }
       }
 
@@ -680,10 +816,107 @@ export const populateNextRoundRaces = (
           (r: BracketRound) => r.roundNumber === 1 && r.bracketType === 'losers'
         );
         if (loserRoundIndex >= 0) {
-          const targetRace = updatedRounds[loserRoundIndex].races[0]; // Race 4
-          if (targetRace) {
+          const race4 = updatedRounds[loserRoundIndex].races[0]; // Race 4
+          if (race4) {
             const newLosers = getRacersByIds(racers, losers);
-            targetRace.racers = [...targetRace.racers, ...newLosers];
+            race4.racers = [...race4.racers, ...newLosers];
+            console.log('Added losers to Race 4:', newLosers.map(r => r.name));
+
+            // Get all active racers (excluding DQ/DNS)
+            const activeRace4Racers = race4.racers.filter(racer => 
+              !race4.disqualifiedRacers?.includes(racer.id) && 
+              !race4.dnsRacers?.includes(racer.id)
+            );
+
+            console.log('Race 4 racer counts:', {
+              total: race4.racers.length,
+              active: activeRace4Racers.length,
+              dq: race4.disqualifiedRacers?.length || 0,
+              dns: race4.dnsRacers?.length || 0
+            });
+
+            // After Race 2 is completed, check if Race 4 has more than 5 racers
+            if (raceNumber === 2 && activeRace4Racers.length > 5) {
+              console.log('Race 2 completed and Race 4 has more than 5 active racers. Recalculating brackets...');
+              console.log('Current active Race 4 racers:', activeRace4Racers.map(r => r.name));
+              
+              // Create new array without second chance rounds
+              const filteredRounds = updatedRounds.filter(round => round.bracketType !== 'losers');
+              console.log('Removed existing second chance rounds. Remaining round types:', 
+                filteredRounds.map(r => r.bracketType));
+              
+              // Create new first round of second chance (split into two races)
+              const newSecondChanceFirstRound: BracketRound = {
+                roundNumber: 1,
+                races: [
+                  {
+                    raceNumber: 4,
+                    racers: activeRace4Racers.slice(0, 3),
+                    bracketType: 'losers',
+                    round: 1,
+                    status: 'pending',
+                    position: 0,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 6, // Will feed into Race 6
+                    disqualifiedRacers: race4.disqualifiedRacers || [],
+                    dnsRacers: race4.dnsRacers || []
+                  },
+                  {
+                    raceNumber: 5,
+                    racers: activeRace4Racers.slice(3),
+                    bracketType: 'losers',
+                    round: 1,
+                    status: 'pending',
+                    position: 1,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 6 // Will feed into Race 6
+                  }
+                ],
+                raceId,
+                raceClass,
+                bracketType: 'losers'
+              };
+
+              console.log('Created new Race 4 with racers:', newSecondChanceFirstRound.races[0].racers.map(r => r.name));
+              console.log('Created new Race 5 with racers:', newSecondChanceFirstRound.races[1].racers.map(r => r.name));
+
+              // Create new second round of second chance
+              const newSecondChanceSecondRound: BracketRound = {
+                roundNumber: 2,
+                races: [
+                  {
+                    raceNumber: 6,
+                    racers: [],
+                    bracketType: 'losers',
+                    round: 2,
+                    status: 'pending',
+                    position: 0,
+                    raceId,
+                    raceClass,
+                    nextWinnerRace: 7 // Will feed into finals (Race 7)
+                  }
+                ],
+                raceId,
+                raceClass,
+                bracketType: 'losers'
+              };
+
+              // Add new second chance rounds to filtered rounds
+              filteredRounds.push(newSecondChanceFirstRound);
+              filteredRounds.push(newSecondChanceSecondRound);
+
+              // Update finals race number
+              const finalsRound = filteredRounds.find((r: BracketRound) => r.bracketType === 'final');
+              if (finalsRound && finalsRound.races.length > 0) {
+                finalsRound.races[0].raceNumber = 7; // Finals becomes Race 7
+                console.log('Updated finals race number to 7');
+              }
+
+              console.log('Returning recalculated bracket structure');
+              return filteredRounds;
+            }
           }
         }
       }

@@ -512,33 +512,62 @@ const BracketRace = ({
   };
 
   const handleCompleteRace = () => {
+    console.log('handleCompleteRace called for race:', {
+      raceNumber: race.raceNumber,
+      bracketType: race.bracketType,
+      round,
+      selectedRacers,
+      validRacers: race.racers
+    });
+
     // Special handling for races where all racers are DQ'd or DNS
     if (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) {
+      console.log('All racers DQ/DNS case detected');
       // Get remaining racers that aren't in winners array
       const remainingRacers = validRacers.map(racer => racer.id);
       onWinnerSelect(race.raceNumber, [], remainingRacers);
       return;
     }
 
-    // Special handling for races where exactly 2 racers are DQ'd or DNS'd in first round
-    if (isFirstRoundTwoRacersDQorDNS) {
-      // Get the DQ'd/DNS'd racers
-      const dqDnsRacers = validRacers
-        .filter(
-          racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
-        )
-        .map(racer => racer.id);
+    // Special handling for first round races where all but one racer is DQ'd or DNS'd
+    if (
+      (totalRacers >= 6 && totalRacers <= 9) &&
+      (race.raceNumber === 1 || race.raceNumber === 2) &&
+      race.bracketType === 'winners' &&
+      round === 1
+    ) {
+      const dqDnsRacers = validRacers.filter(
+        racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+      );
+      
+      console.log('Checking DQ/DNS status:', {
+        totalDQDNS: dqDnsRacers.length,
+        validRacersCount: validRacers.length
+      });
 
-      // Get the remaining racers (not DQ'd or DNS'd)
-      const remainingRacers = validRacers
-        .filter(racer => !dqDnsRacers.includes(racer.id))
-        .map(racer => racer.id);
-
-      onWinnerSelect(race.raceNumber, remainingRacers, dqDnsRacers);
-      return;
+      // Check if all but one racer is DQ'd or DNS'd
+      if (dqDnsRacers.length === validRacers.length - 1) {
+        console.log('All but one racer is DQ/DNS');
+        // Get the single remaining racer
+        const remainingRacer = validRacers.find(
+          racer => !race.disqualifiedRacers?.includes(racer.id) && !race.dnsRacers?.includes(racer.id)
+        );
+        
+        if (remainingRacer) {
+          console.log('Moving remaining racer to winners:', remainingRacer.name);
+          // Move the remaining racer to winners and all others to losers
+          onWinnerSelect(
+            race.raceNumber,
+            [remainingRacer.id],
+            dqDnsRacers.map(racer => racer.id)
+          );
+          return;
+        }
+      }
     }
 
     if (selectedRacers.length === 0 && !isFirstRoundAllDQorDNS) {
+      console.log('No racers selected and not all DQ/DNS case');
       return;
     }
 
@@ -560,12 +589,25 @@ const BracketRace = ({
         !isSecondChanceTwoRacers &&
         selectedRacers.length === 2);
 
+    console.log('Race completion validation:', {
+      isValid,
+      isSixRacersRace3,
+      validRacersLength: validRacers.length,
+      selectedRacersLength: selectedRacers.length
+    });
+
     if (!isValid) {
+      console.log('Invalid race completion state');
       return;
     }
 
     const winners = selectedRacers;
     const losers = validRacers.filter(racer => !winners.includes(racer.id)).map(racer => racer.id);
+
+    console.log('Completing race with:', {
+      winners,
+      losers
+    });
 
     // Call onWinnerSelect with the complete race information
     onWinnerSelect(race.raceNumber, winners, losers);
@@ -595,7 +637,14 @@ const BracketRace = ({
         'bracket-match bg-card border rounded-lg p-3 relative',
         race.status === 'completed' && 'border-green-500',
         race.status === 'in_progress' && 'border-yellow-500',
-        (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) && 'border-red-500'
+        (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) && 'border-red-500',
+        ((totalRacers >= 6 && totalRacers <= 9) &&
+          (race.raceNumber === 1 || race.raceNumber === 2) &&
+          race.bracketType === 'winners' &&
+          round === 1 &&
+          validRacers.filter(
+            racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+          ).length === validRacers.length - 1) && 'border-orange-500'
       )}
       style={{
         marginTop: `${race.position * 10}px`,
@@ -607,7 +656,6 @@ const BracketRace = ({
           <RaceStatusIndicator status={race.status as unknown as RaceStatus} />
           <span className="text-sm font-medium">
             Race {race.raceNumber}
-            {race.bracketType === 'winners' && ' (Winners Bracket)'}
             {race.bracketType === 'losers' && ' (Second Chance)'}
             {race.bracketType === 'final' &&
               ` (Finals${hasSecondChanceSecondRound() ? ' - Race 6' : ''})`}
@@ -628,13 +676,29 @@ const BracketRace = ({
         </div>
         {((selectedRacers.length > 0 && !isFirstRoundAllDQorDNS && !isSecondRaceAllDQorDNS) ||
           (isFirstRoundAllDQorDNS && validRacers.length > 0) ||
-          (isSecondRaceAllDQorDNS && validRacers.length > 0)) &&
+          (isSecondRaceAllDQorDNS && validRacers.length > 0) ||
+          ((totalRacers >= 6 && totalRacers <= 9) &&
+            (race.raceNumber === 1 || race.raceNumber === 2) &&
+            race.bracketType === 'winners' &&
+            round === 1 &&
+            validRacers.filter(
+              racer =>
+                race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+            ).length === validRacers.length - 1)) &&
           race.status !== 'completed' && (
             <Button
               variant={
-                isFirstRoundAllDQorDNS
+                isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS
                   ? 'destructive'
-                  : isSecondRaceAllDQorDNS
+                  : ((totalRacers >= 6 && totalRacers <= 9) &&
+                      (race.raceNumber === 1 || race.raceNumber === 2) &&
+                      race.bracketType === 'winners' &&
+                      round === 1 &&
+                      validRacers.filter(
+                        racer =>
+                          race.disqualifiedRacers?.includes(racer.id) ||
+                          race.dnsRacers?.includes(racer.id)
+                      ).length === validRacers.length - 1)
                     ? 'destructive'
                     : 'outline'
               }
@@ -642,11 +706,9 @@ const BracketRace = ({
               className="gap-2"
               onClick={handleCompleteRace}
             >
-              {isFirstRoundAllDQorDNS
+              {isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS
                 ? 'Move to Second Chance'
-                : isSecondRaceAllDQorDNS
-                  ? 'Move to Second Chance'
-                  : 'Complete Race'}
+                : 'Complete Race'}
             </Button>
           )}
       </div>
@@ -900,6 +962,16 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     // Get the racers for this class
     const classRacers = racersByClass[raceClass] || [];
 
+    console.log('handleWinnerSelect called with:', {
+      raceClass,
+      raceNumber,
+      round,
+      bracketType,
+      selectedWinners,
+      selectedLosers,
+      totalRacers: classRacers.length
+    });
+
     try {
       dispatch(
         updateRaceResults({
@@ -914,6 +986,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
         })
       )
         .then(() => {
+          console.log('Race results updated successfully');
           // Update the winners state for this race
           setRaceWinners(prev => {
             const newState = {
@@ -923,6 +996,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
                 [`${bracketType}-${round}-${raceNumber}`]: selectedWinners,
               },
             };
+            console.log('Updated race winners state:', newState);
             return newState;
           });
         })
