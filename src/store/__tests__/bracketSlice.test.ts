@@ -18,6 +18,332 @@ describe('Bracket Generation', () => {
     }));
   };
 
+  describe('1 Racer Scenario', () => {
+    const oneRacer = createMockRacers(1, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(oneRacer, 'race-1', 'mens-open');
+    });
+
+    test('should create a simple final-only bracket structure', () => {
+      // Should have only 1 round (final)
+      expect(brackets.length).toBe(1);
+      
+      // Should have only one race (the final)
+      const finals = brackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      expect(finals?.races.length).toBe(1);
+      expect(finals?.races[0].raceNumber).toBe(1);
+      
+      // The final should contain the single racer
+      expect(finals?.races[0].racers.length).toBe(1);
+      expect(finals?.races[0].racers[0].id).toBe('racer-1');
+      
+      // No winners or losers brackets needed
+      const winnersRound = brackets.find((b: BracketRound) => b.bracketType === 'winners');
+      const losersRound = brackets.find((b: BracketRound) => b.bracketType === 'losers');
+      expect(winnersRound).toBeUndefined();
+      expect(losersRound).toBeUndefined();
+    });
+  });
+
+  describe('2 Racers Scenario', () => {
+    const twoRacers = createMockRacers(2, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(twoRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create a simple final-only bracket structure', () => {
+      // Should have only 1 round (final)
+      expect(brackets.length).toBe(1);
+      
+      // Should have only one race (the final)
+      const finals = brackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      expect(finals?.races.length).toBe(1);
+      expect(finals?.races[0].raceNumber).toBe(1);
+      
+      // The final should contain both racers
+      expect(finals?.races[0].racers.length).toBe(2);
+      expect(finals?.races[0].racers.map(r => r.id)).toEqual(['racer-1', 'racer-2']);
+      
+      // No winners or losers brackets needed
+      const winnersRound = brackets.find((b: BracketRound) => b.bracketType === 'winners');
+      const losersRound = brackets.find((b: BracketRound) => b.bracketType === 'losers');
+      expect(winnersRound).toBeUndefined();
+      expect(losersRound).toBeUndefined();
+    });
+  });
+
+  describe('3 Racers Scenario', () => {
+    const threeRacers = createMockRacers(3, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(threeRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      // Should have 2 rounds total (1 winners, 1 finals)
+      expect(brackets.length).toBe(2);
+      
+      // First round should have 1 race with 3 racers
+      const firstRound = brackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound).toBeDefined();
+      expect(firstRound?.races.length).toBe(1);
+      expect(firstRound?.races[0].racers.length).toBe(3);
+      expect(firstRound?.races[0].raceNumber).toBe(1);
+      
+      // Finals should be race 2
+      const finals = brackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      expect(finals?.races[0].raceNumber).toBe(2);
+      expect(finals?.races[0].racers.length).toBe(0); // Initially empty
+      
+      // No second chance bracket needed for 3 racers
+      const losersRound = brackets.find((b: BracketRound) => b.bracketType === 'losers');
+      expect(losersRound).toBeUndefined();
+    });
+
+    test('should correctly route winners from first round to finals', () => {
+      // Simulate Race 1 completion
+      const race1Winners = ['racer-1', 'racer-2'];
+      const race1Losers = ['racer-3'];
+      
+      const updatedBrackets = populateNextRoundRaces(
+        brackets,
+        1, // round
+        'race-1',
+        'mens-open',
+        race1Winners,
+        race1Losers,
+        threeRacers,
+        1, // race number
+        'winners' // bracket type
+      );
+      
+      // Check finals (Race 2)
+      const finals = updatedBrackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      const race2 = finals!.races[0];
+      expect(race2.racers.length).toBe(2);
+      expect(race2.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race1Winners));
+    });
+  });
+
+  describe('4 Racers Scenario', () => {
+    const fourRacers = createMockRacers(4, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(fourRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      // Should have 2 rounds total (1 winners, 1 finals)
+      expect(brackets.length).toBe(2);
+      
+      // First round should have 1 race with 4 racers
+      const firstRound = brackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(1);
+      expect(firstRound?.races[0].racers.length).toBe(4);
+      expect(firstRound?.races[0].raceNumber).toBe(1);
+      
+      // Finals should be race 2
+      const finals = brackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      expect(finals?.races[0].raceNumber).toBe(2);
+      expect(finals?.races[0].racers.length).toBe(0); // Initially empty
+      
+      // No second chance bracket needed for 4 racers
+      const losersRound = brackets.find((b: BracketRound) => b.bracketType === 'losers');
+      expect(losersRound).toBeUndefined();
+    });
+
+    test('should correctly route winners from first round to finals', () => {
+      // Simulate Race 1 completion
+      const race1Winners = ['racer-1', 'racer-2'];
+      const race1Losers = ['racer-3', 'racer-4'];
+      
+      const updatedBrackets = populateNextRoundRaces(
+        brackets,
+        1, // round
+        'race-1',
+        'mens-open',
+        race1Winners,
+        race1Losers,
+        fourRacers,
+        1, // race number
+        'winners' // bracket type
+      );
+      
+      // Check finals (Race 2)
+      const finals = updatedBrackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      const race2 = finals!.races[0];
+      expect(race2.racers.length).toBe(2);
+      expect(race2.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race1Winners));
+    });
+  });
+
+  describe('5 Racers Scenario', () => {
+    const fiveRacers = createMockRacers(5, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(fiveRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      // Should have 4 rounds total (2 winners, 1 second chance, 1 finals)
+      expect(brackets.length).toBe(4);
+      
+      // First round should have 2 races with 3 and 2 racers
+      const firstRound = brackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(2);
+      expect(firstRound?.races[0].racers.length).toBe(3);
+      expect(firstRound?.races[1].racers.length).toBe(2);
+      
+      // Race numbers should be 1 and 2
+      expect(firstRound?.races[0].raceNumber).toBe(1);
+      expect(firstRound?.races[1].raceNumber).toBe(2);
+      
+      // Second round should have 1 race (initially empty)
+      const secondRound = brackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(secondRound?.races.length).toBe(1);
+      expect(secondRound?.races[0].raceNumber).toBe(3);
+      expect(secondRound?.races[0].racers.length).toBe(0);
+      
+      // Second chance should have 1 race (initially empty)
+      const secondChance = brackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(secondChance?.races.length).toBe(1);
+      expect(secondChance?.races[0].raceNumber).toBe(4);
+      expect(secondChance?.races[0].racers.length).toBe(0);
+      
+      // Finals should be race 5
+      const finals = brackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals?.races[0].raceNumber).toBe(5);
+    });
+
+    test('should correctly route winners and losers from first round', () => {
+      // Simulate Race 1 completion
+      const race1Winners = ['racer-1', 'racer-2'];
+      const race1Losers = ['racer-3'];
+      
+      let updatedBrackets = populateNextRoundRaces(
+        brackets,
+        1, // round
+        'race-1',
+        'mens-open',
+        race1Winners,
+        race1Losers,
+        fiveRacers,
+        1, // race number
+        'winners' // bracket type
+      );
+      
+      // Simulate Race 2 completion
+      const race2Winners = ['racer-4'];
+      const race2Losers = ['racer-5'];
+      
+      updatedBrackets = populateNextRoundRaces(
+        updatedBrackets,
+        1, // round
+        'race-1',
+        'mens-open',
+        race2Winners,
+        race2Losers,
+        fiveRacers,
+        2, // race number
+        'winners' // bracket type
+      );
+      
+      // Check Race 3 (winners bracket second round)
+      const secondRound = updatedBrackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(secondRound).toBeDefined();
+      const race3 = secondRound!.races[0];
+      expect(race3.racers.length).toBe(3);
+      expect(race3.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race1Winners.concat(race2Winners)));
+      
+      // Check Race 4 (second chance)
+      const secondChance = updatedBrackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(secondChance).toBeDefined();
+      const race4 = secondChance!.races[0];
+      expect(race4.racers.length).toBe(2);
+      expect(race4.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race1Losers.concat(race2Losers)));
+    });
+
+    test('should correctly route winners from Race 3 to finals', () => {
+      // Setup Race 3 with winners from first round
+      const race3Round = brackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(race3Round).toBeDefined();
+      const race3 = race3Round!.races[0];
+      race3.racers = fiveRacers.filter(r => ['racer-1', 'racer-2', 'racer-4'].includes(r.id));
+      
+      // Simulate Race 3 completion
+      const race3Winners = ['racer-1', 'racer-4'];
+      const race3Losers = ['racer-2'];
+      
+      const updatedBrackets = populateNextRoundRaces(
+        brackets,
+        2, // round
+        'race-1',
+        'mens-open',
+        race3Winners,
+        race3Losers,
+        fiveRacers,
+        3, // race number
+        'winners' // bracket type
+      );
+      
+      // Check finals (Race 5)
+      const finals = updatedBrackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      const race5 = finals!.races[0];
+      expect(race5.racers.length).toBe(2); // Only winners from Race 3 so far
+      expect(race5.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race3Winners));
+      
+      // Losers from Race 3 should NOT go to second chance
+      const secondChance = updatedBrackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(secondChance).toBeDefined();
+      const race4 = secondChance!.races[0];
+      expect(race4.racers.map((r: Racer) => r.id)).not.toEqual(expect.arrayContaining(race3Losers));
+    });
+
+    test('should correctly route winner from Race 4 to finals', () => {
+      // Setup Race 4 with losers from first round
+      const race4Round = brackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(race4Round).toBeDefined();
+      const race4 = race4Round!.races[0];
+      race4.racers = fiveRacers.filter(r => ['racer-3', 'racer-5'].includes(r.id));
+      
+      // Simulate Race 4 completion
+      const race4Winners = ['racer-3'];
+      const race4Losers = ['racer-5'];
+      
+      const updatedBrackets = populateNextRoundRaces(
+        brackets,
+        1, // round
+        'race-1',
+        'mens-open',
+        race4Winners,
+        race4Losers,
+        fiveRacers,
+        4, // race number
+        'losers' // bracket type
+      );
+      
+      // Check finals (Race 5)
+      const finals = updatedBrackets.find((b: BracketRound) => b.bracketType === 'final');
+      expect(finals).toBeDefined();
+      const race5 = finals!.races[0];
+      expect(race5.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race4Winners));
+    });
+  });
+
   describe('6 Racers Scenario', () => {
     const sixRacers = createMockRacers(6, 'mens-open');
     let brackets: BracketRound[];
@@ -496,11 +822,11 @@ describe('Bracket Generation', () => {
       
       // Check Race 3 (winners bracket second round)
       // Should only have 2 racers now
-      const secondRound = updatedBrackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
-      expect(secondRound).toBeDefined();
-      const race3 = secondRound!.races[0];
-      expect(race3.racers.length).toBe(2);
-      expect(race3.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining([...race1Winners, ...race2Winners]));
+      const updatedSecondRound = updatedBrackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(updatedSecondRound).toBeDefined();
+      const updatedRace3 = updatedSecondRound!.races[0];
+      expect(updatedRace3.racers.length).toBe(2);
+      expect(updatedRace3.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining([...race1Winners, ...race2Winners]));
       
       // No second chance races should be populated since there were no losers
       const secondChance = updatedBrackets.find((b: BracketRound) => b.roundNumber === 1 && b.bracketType === 'losers');
@@ -512,47 +838,37 @@ describe('Bracket Generation', () => {
       // Reset brackets
       brackets = generateFullBracketStructure(sevenRacers, 'race-1', 'mens-open');
       
+      // Find the second round winners bracket
+      const originalSecondRound = brackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(originalSecondRound).toBeDefined();
+      
       // Modify the bracket structure to force 5 racers into Race 3
       // This simulates a special rule allowing more racers to advance
-      let modifiedBrackets = brackets.map(round => {
-        if (round.roundNumber === 2 && round.bracketType === 'winners') {
-          round.races[0].racers = sevenRacers.slice(0, 5); // Add 5 racers to Race 3
-        }
-        return round;
-      });
+      const originalRace3 = originalSecondRound!.races[0];
+      originalRace3.racers = sevenRacers.slice(0, 5); // Add 5 racers to Race 3
       
-      // Verify the setup
+      // Now call checkAndRestructureRaces to handle the overloaded race
+      const modifiedBrackets = checkAndRestructureRaces(brackets, sevenRacers, 'race-1', 'mens-open');
+      
+      // Verify the restructuring
       const modifiedSecondRound = modifiedBrackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
       expect(modifiedSecondRound).toBeDefined();
-      expect(modifiedSecondRound!.races[0].racers.length).toBe(5);
-      
-      // Now call the restructuring function
-      modifiedBrackets = checkAndRestructureRaces(
-        modifiedBrackets,
-        sevenRacers,
-        'race-1',
-        'mens-open'
-      );
-      
-      // Verify that the race with 5 racers was split into two races
-      const restructuredSecondRound = modifiedBrackets.find((b: BracketRound) => b.roundNumber === 2 && b.bracketType === 'winners');
-      expect(restructuredSecondRound).toBeDefined();
-      expect(restructuredSecondRound!.races.length).toBe(2); // Should now have 2 races instead of 1
+      expect(modifiedSecondRound!.races.length).toBe(2); // Should now have 2 races instead of 1
       
       // First race should have 3 racers, second race should have 2
-      expect(restructuredSecondRound!.races[0].racers.length).toBe(3);
-      expect(restructuredSecondRound!.races[1].racers.length).toBe(2);
+      expect(modifiedSecondRound!.races[0].racers.length).toBe(3);
+      expect(modifiedSecondRound!.races[1].racers.length).toBe(2);
       
       // Verify race numbers were reassigned
-      expect(restructuredSecondRound!.races[0].raceNumber).toBe(3);
-      expect(restructuredSecondRound!.races[1].raceNumber).toBe(4);
+      expect(modifiedSecondRound!.races[0].raceNumber).toBe(3);
+      expect(modifiedSecondRound!.races[1].raceNumber).toBe(4);
       
       // Verify that downstream race connections were updated
       // This depends on the specific implementation of checkAndRestructureRaces
       // For now, we'll just check that both races have the same nextWinnerRace
-      expect(restructuredSecondRound!.races[0].nextWinnerRace).toBeDefined();
-      expect(restructuredSecondRound!.races[1].nextWinnerRace).toBeDefined();
-      expect(restructuredSecondRound!.races[0].nextWinnerRace).toBe(restructuredSecondRound!.races[1].nextWinnerRace);
+      expect(modifiedSecondRound!.races[0].nextWinnerRace).toBeDefined();
+      expect(modifiedSecondRound!.races[1].nextWinnerRace).toBeDefined();
+      expect(modifiedSecondRound!.races[0].nextWinnerRace).toBe(modifiedSecondRound!.races[1].nextWinnerRace);
     });
   });
 
