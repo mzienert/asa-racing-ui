@@ -727,4 +727,197 @@ describe('Bracket Generation', () => {
       expect(race8.racers.map((r: Racer) => r.id)).toEqual(expect.arrayContaining(race7Winners));
     });
   });
+
+  describe('10 Racers Scenario', () => {
+    const tenRacers = createMockRacers(10, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(tenRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      // Should have balanced groups of [4,3,3]
+      const firstRound = brackets.find(b => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(3);
+      expect(firstRound?.races[0].racers.length).toBe(4);
+      expect(firstRound?.races[1].racers.length).toBe(3);
+      expect(firstRound?.races[2].racers.length).toBe(3);
+      
+      // Verify race progression
+      expect(firstRound?.races[0].nextWinnerRace).toBeDefined();
+      expect(firstRound?.races[1].nextWinnerRace).toBeDefined();
+      expect(firstRound?.races[2].nextWinnerRace).toBeDefined();
+    });
+  });
+
+  describe('12 Racers Scenario', () => {
+    const twelveRacers = createMockRacers(12, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(twelveRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      const firstRound = brackets.find(b => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(3);
+      expect(firstRound?.races[0].racers.length).toBe(4);
+      expect(firstRound?.races[1].racers.length).toBe(4);
+      expect(firstRound?.races[2].racers.length).toBe(4);
+    });
+
+    test('should handle first round progression correctly', () => {
+      // Simulate all first round races
+      let updatedBrackets = brackets;
+      const raceResults = [
+        { winners: ['racer-1', 'racer-2'], losers: ['racer-3', 'racer-4'] },
+        { winners: ['racer-5', 'racer-6'], losers: ['racer-7', 'racer-8'] },
+        { winners: ['racer-9', 'racer-10'], losers: ['racer-11', 'racer-12'] }
+      ];
+
+      raceResults.forEach((result, idx) => {
+        updatedBrackets = populateNextRoundRaces(
+          updatedBrackets,
+          1,
+          'race-1',
+          'mens-open',
+          result.winners,
+          result.losers,
+          twelveRacers,
+          idx + 1,
+          'winners'
+        );
+      });
+
+      // Check second round structure
+      const secondRound = updatedBrackets.find(b => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(secondRound?.races.length).toBe(2);
+      expect(secondRound?.races[0].racers.length).toBe(3);
+      expect(secondRound?.races[1].racers.length).toBe(3);
+    });
+  });
+
+  describe('16 Racers Scenario', () => {
+    const sixteenRacers = createMockRacers(16, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(sixteenRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      const firstRound = brackets.find(b => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(4);
+      firstRound?.races.forEach(race => {
+        expect(race.racers.length).toBe(4);
+      });
+
+      // Verify second chance structure
+      const secondChance = brackets.find(b => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(secondChance).toBeDefined();
+      expect(secondChance?.races.length).toBe(2);
+    });
+
+    test('should handle multi-round progression', async () => {
+      let updatedBrackets = brackets;
+      
+      // First round - 4 races
+      for (let i = 0; i < 4; i++) {
+        updatedBrackets = populateNextRoundRaces(
+          updatedBrackets,
+          1,
+          'race-1',
+          'mens-open',
+          [`racer-${i*4+1}`, `racer-${i*4+2}`],
+          [`racer-${i*4+3}`, `racer-${i*4+4}`],
+          sixteenRacers,
+          i + 1,
+          'winners'
+        );
+      }
+
+      // Verify second round structure
+      const secondRound = updatedBrackets.find(b => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(secondRound?.races.length).toBe(2);
+      expect(secondRound?.races[0].racers.length).toBe(4);
+      expect(secondRound?.races[1].racers.length).toBe(4);
+    });
+  });
+
+  describe('24 Racers Scenario', () => {
+    const twentyFourRacers = createMockRacers(24, 'mens-open');
+    let brackets: BracketRound[];
+
+    beforeEach(() => {
+      brackets = generateFullBracketStructure(twentyFourRacers, 'race-1', 'mens-open');
+    });
+
+    test('should create correct initial bracket structure', () => {
+      const firstRound = brackets.find(b => b.roundNumber === 1 && b.bracketType === 'winners');
+      expect(firstRound?.races.length).toBe(6);
+      firstRound?.races.forEach(race => {
+        expect(race.racers.length).toBe(4);
+      });
+
+      // Verify progression structure
+      const secondRound = brackets.find(b => b.roundNumber === 2 && b.bracketType === 'winners');
+      expect(secondRound?.races.length).toBe(3);
+    });
+
+    test('should handle first round progression with multiple second chance races', () => {
+      let updatedBrackets = brackets;
+      
+      // Process first two races
+      updatedBrackets = populateNextRoundRaces(
+        updatedBrackets,
+        1,
+        'race-1',
+        'mens-open',
+        ['racer-1', 'racer-2'],
+        ['racer-3', 'racer-4'],
+        twentyFourRacers,
+        1,
+        'winners'
+      );
+
+      updatedBrackets = populateNextRoundRaces(
+        updatedBrackets,
+        1,
+        'race-1',
+        'mens-open',
+        ['racer-5', 'racer-6'],
+        ['racer-7', 'racer-8'],
+        twentyFourRacers,
+        2,
+        'winners'
+      );
+
+      // Verify second chance structure
+      const secondChance = updatedBrackets.find(b => b.roundNumber === 1 && b.bracketType === 'losers');
+      expect(secondChance?.races.length).toBe(2);
+      expect(secondChance?.races[0].racers.length).toBe(2);
+      expect(secondChance?.races[1].racers.length).toBe(2);
+    });
+
+    test('should maintain proper race numbering throughout bracket', () => {
+      const allRaces = brackets.flatMap(round => round.races);
+      const raceNumbers = allRaces.map(race => race.raceNumber);
+      
+      // Verify sequential numbering
+      raceNumbers.forEach((num, idx) => {
+        if (idx > 0) {
+          expect(num).toBe(raceNumbers[idx - 1] + 1);
+        }
+      });
+
+      // Verify proper progression references
+      allRaces.forEach(race => {
+        if (race.nextWinnerRace) {
+          expect(raceNumbers).toContain(race.nextWinnerRace);
+          expect(race.nextWinnerRace).toBeGreaterThan(race.raceNumber);
+        }
+      });
+    });
+  });
 });

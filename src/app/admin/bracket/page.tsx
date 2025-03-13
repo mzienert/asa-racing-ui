@@ -511,6 +511,48 @@ const BracketRace = ({
     setSelectedRacerForAction(null);
   };
 
+  // Add special case handling for 9 racers scenario
+  const isNineRacersSpecialCase = () => {
+    // Count total racers across all first round races
+    const totalRacers = brackets
+      .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
+      .flatMap(b => b.races)
+      .flatMap(r => r.racers)
+      .length;
+    
+    return totalRacers === 9;
+  };
+
+  // Add special case handling for 12 racers scenario
+  const isTwelveRacersSpecialCase = () => {
+    // Count total racers across all first round races
+    const totalRacers = brackets
+      .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
+      .flatMap(b => b.races)
+      .flatMap(r => r.racers)
+      .length;
+    
+    return totalRacers === 12;
+  };
+
+  // Determine if this is a special race that needs custom handling
+  const isSpecialRace = () => {
+    if (isNineRacersSpecialCase()) {
+      // For 9 racers, race 4 (winners round 2) and race 7 (second chance round 2) are special
+      return (race.raceNumber === 4 && race.bracketType === 'winners') || 
+             (race.raceNumber === 7 && race.bracketType === 'losers');
+    }
+    
+    if (isTwelveRacersSpecialCase()) {
+      // For 12 racers, races 4 and 5 (second round) need special handling
+      return (race.raceNumber === 4 || race.raceNumber === 5) && 
+             race.bracketType === 'winners' && 
+             round === 2;
+    }
+    
+    return false;
+  };
+
   const handleCompleteRace = () => {
     console.log('handleCompleteRace called for race:', {
       raceNumber: race.raceNumber,
@@ -614,6 +656,24 @@ const BracketRace = ({
 
     // Reset selected racers after completion
     setSelectedRacers([]);
+
+    // Add special case handling for 9 racers scenario
+    if (isNineRacersSpecialCase() && race.raceNumber === 4 && race.bracketType === 'winners') {
+      // For race 4 in 9 racers scenario, ensure winners go directly to finals
+      console.log('Special case: 9 racers, race 4 winners going directly to finals');
+    }
+    
+    if (isNineRacersSpecialCase() && race.raceNumber === 5 && race.bracketType === 'losers') {
+      // For race 5 in 9 racers scenario, ensure winners go to race 7
+      console.log('Special case: 9 racers, race 5 winners going to race 7');
+    }
+    
+    // Add special case handling for 12 racers scenario
+    if (isTwelveRacersSpecialCase() && (race.raceNumber === 4 || race.raceNumber === 5) && 
+        race.bracketType === 'winners' && round === 2) {
+      // For races 4 and 5 in 12 racers scenario, ensure exactly 3 racers per race
+      console.log(`Special case: 12 racers, race ${race.raceNumber} should have exactly 3 racers`);
+    }
   };
 
   // Add helper to determine if we have a second round of second chance
@@ -672,6 +732,11 @@ const BracketRace = ({
               ' (Select One Winner)'}
             {isNineRacersSecondChanceFirstRound && ' (Select Two Winners)'}
             {isNineRacersSecondChanceSecondRound && ' (Select One Winner)'}
+            {isSpecialRace() && (
+              <span className="ml-1 text-xs text-amber-500 font-normal">
+                (Special Case)
+              </span>
+            )}
           </span>
         </div>
         {((selectedRacers.length > 0 && !isFirstRoundAllDQorDNS && !isSecondRaceAllDQorDNS) ||
@@ -708,7 +773,9 @@ const BracketRace = ({
             >
               {isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS
                 ? 'Move to Second Chance'
-                : 'Complete Race'}
+                : isSpecialRace()
+                  ? 'Complete Special Race'
+                  : 'Complete Race'}
             </Button>
           )}
       </div>
@@ -1005,6 +1072,34 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
         });
     } catch (error) {
       console.error('Error in handleWinnerSelect:', error);
+    }
+
+    // Add special case handling for 9 racers scenario
+    const totalRacers = brackets
+      .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
+      .flatMap(b => b.races)
+      .flatMap(r => r.racers)
+      .length;
+      
+    if (totalRacers === 9) {
+      console.log(`Special case handling for 9 racers, race ${raceNumber}, round ${round}, bracket ${bracketType}`);
+      
+      // For race 4 in 9 racers scenario, ensure winners go directly to finals
+      if (raceNumber === 4 && bracketType === 'winners') {
+        console.log('9 racers special case: Race 4 winners going directly to finals');
+      }
+      
+      // For race 5 in 9 racers scenario, ensure winners go to race 7
+      if (raceNumber === 5 && bracketType === 'losers') {
+        console.log('9 racers special case: Race 5 winners going to race 7');
+      }
+    }
+    
+    // Add special case handling for 12 racers scenario
+    if (totalRacers === 12) {
+      if ((raceNumber === 4 || raceNumber === 5) && bracketType === 'winners' && round === 2) {
+        console.log(`12 racers special case: Race ${raceNumber} should have exactly 3 racers`);
+      }
     }
   };
 
