@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy } from 'lucide-react';
+import { createSelector } from 'reselect';
 
 import {
   Table,
@@ -26,6 +27,33 @@ interface BracketRacer {
   seedData?: {
     startingPosition?: number;
   };
+}
+
+interface BracketRace {
+  raceNumber: number;
+  winners?: string[];
+  losers?: string[];
+  racers: BracketRacer[];
+  bracketType: 'winners' | 'losers' | 'final';
+  round: number;
+  status: 'pending' | 'completed';
+  position: number;
+  raceClass: string;
+  disqualifiedRacers?: string[];
+  finalRankings?: {
+    first?: string;
+    second?: string;
+    third?: string;
+    fourth?: string;
+  };
+}
+
+interface BracketRound {
+  roundNumber: number;
+  races: BracketRace[];
+  raceId: string;
+  raceClass: string;
+  bracketType: 'winners' | 'losers' | 'final';
 }
 
 interface RaceResult {
@@ -70,9 +98,51 @@ interface ResultsContentProps {
   selectedClass: string;
 }
 
+// Add helper function to find third place finisher
+const findThirdPlaceFinisher = (brackets: BracketRound[]): string | undefined => {
+  console.log('Finding third place finisher...');
+
+  // Look specifically for race 3 in the winners bracket
+  const winnersRounds = brackets.filter(round => round.bracketType === 'winners');
+  console.log('Winners rounds:', winnersRounds);
+
+  // Find race 3 specifically
+  for (const round of winnersRounds) {
+    const race3 = round.races.find(race => race.raceNumber === 3);
+    if (race3) {
+      console.log('Found race 3:', {
+        raceNumber: race3.raceNumber,
+        winners: race3.winners,
+        losers: race3.losers,
+      });
+
+      if (race3.losers && race3.losers.length > 0) {
+        console.log('Found third place from race 3:', race3.losers[0]);
+        return race3.losers[0];
+      }
+    }
+  }
+
+  // If for some reason race 3 isn't found or doesn't have a loser (shouldn't happen),
+  // log the error and return undefined
+  console.log('No third place finisher found - race 3 not found or no loser');
+  return undefined;
+};
+
+// Create a memoized selector for brackets
+const selectBracketsByRaceAndClass = createSelector(
+  [
+    (state: RootState) => state.brackets.entities,
+    (_: RootState, raceId: string) => raceId,
+    (_: RootState, __: string, selectedClass: string) => selectedClass,
+  ],
+  (entities, raceId, selectedClass) =>
+    Object.values(entities[raceId]?.[selectedClass] || {}) as BracketRound[]
+);
+
 const ResultsContent = ({ race, selectedClass }: ResultsContentProps) => {
-  const brackets = useSelector((state: RootState) => 
-    Object.values(state.brackets.entities[race.id]?.[selectedClass] || {})
+  const brackets = useSelector((state: RootState) =>
+    selectBracketsByRaceAndClass(state, race.id, selectedClass)
   );
 
   console.log('Processing brackets:', brackets);
@@ -83,29 +153,49 @@ const ResultsContent = ({ race, selectedClass }: ResultsContentProps) => {
       console.log('Checking round:', round);
       return round.bracketType === 'final';
     })
-    .flatMap(round => 
+    .flatMap(round =>
       round.races
         .filter(race => {
           console.log('Checking race:', race);
-          return race.status === 'completed' && race.finalRankings;
+          return race.status === 'completed';
         })
         .flatMap(race => {
           console.log('Processing race for results:', race);
           const raceResults: RaceResult[] = [];
-          
+
           if (race.finalRankings) {
+            // Find third place if not set in finalRankings
+            let thirdPlaceId = race.finalRankings.third;
+            if (!thirdPlaceId && race.finalRankings.first && race.finalRankings.second) {
+              thirdPlaceId = findThirdPlaceFinisher(brackets);
+              console.log('Found third place ID:', thirdPlaceId);
+            }
+
             [
               { position: 1, key: 'first' },
               { position: 2, key: 'second' },
-              { position: 3, key: 'third' },
+              { position: 3, id: thirdPlaceId },
               { position: 4, key: 'fourth' },
-            ].forEach(({ position, key }) => {
-              const racerId = race.finalRankings![key as keyof typeof race.finalRankings];
+            ].forEach(({ position, key, id }) => {
+              const racerId =
+                id ||
+                (key ? race.finalRankings![key as keyof typeof race.finalRankings] : undefined);
               if (racerId) {
-                const racer = race.racers.find(r => r.id === racerId) as unknown as BracketRacer;
+                // Look for the racer in all brackets to ensure we find them
+                let racer: BracketRacer | undefined;
+                for (const round of brackets) {
+                  for (const race of round.races) {
+                    const foundRacer = race.racers.find(r => r.id === racerId);
+                    if (foundRacer) {
+                      racer = foundRacer;
+                      break;
+                    }
+                  }
+                  if (racer) break;
+                }
+
                 if (racer) {
-                  console.log('Racer data:', racer);
-                  console.log('Racer number:', racer.bibNumber, typeof racer.bibNumber);
+                  console.log(`Found racer for position ${position}:`, racer);
                   raceResults.push({
                     position,
                     riderNumber: racer.bibNumber ? Number(racer.bibNumber) : 0,
@@ -113,8 +203,10 @@ const ResultsContent = ({ race, selectedClass }: ResultsContentProps) => {
                     class: race.raceClass,
                     lapTime: '-',
                     totalTime: '-',
-                    status: 'finished'
+                    status: 'finished',
                   });
+                } else {
+                  console.log(`Could not find racer for ID ${racerId}`);
                 }
               }
             });
@@ -133,7 +225,7 @@ const ResultsContent = ({ race, selectedClass }: ResultsContentProps) => {
                 class: race.raceClass,
                 lapTime: '-',
                 totalTime: '-',
-                status: 'DNF'
+                status: 'DNF',
               });
             }
           });
@@ -149,9 +241,7 @@ const ResultsContent = ({ race, selectedClass }: ResultsContentProps) => {
         <div className="flex flex-col items-center justify-center text-center space-y-4">
           <Trophy className="h-12 w-12 text-muted-foreground" />
           <h3 className="text-lg font-semibold">No Results Available</h3>
-          <p className="text-muted-foreground">
-            Complete the races to see results here.
-          </p>
+          <p className="text-muted-foreground">Complete the races to see results here.</p>
         </div>
       </Card>
     );
@@ -237,7 +327,11 @@ export default function ResultsPage() {
         <Card className="shadow-md">
           <div className="flex flex-col">
             <div className="flex justify-between items-center p-6">
-              <PageHeader icon={Trophy} title="Race Results" description="View and export race results." />
+              <PageHeader
+                icon={Trophy}
+                title="Race Results"
+                description="View and export race results."
+              />
             </div>
             <CardContent>
               <Tabs value={selectedClass} className="w-full">
@@ -246,15 +340,12 @@ export default function ResultsPage() {
                   onTabChange={setSelectedClass}
                 />
                 {activeRace.raceClasses.map(raceClass => (
-                  <TabsContent 
-                    key={raceClass.raceClass} 
+                  <TabsContent
+                    key={raceClass.raceClass}
                     value={raceClass.raceClass}
                     className="mt-4 space-y-6"
                   >
-                    <ResultsContent 
-                      race={activeRace} 
-                      selectedClass={raceClass.raceClass} 
-                    />
+                    <ResultsContent race={activeRace} selectedClass={raceClass.raceClass} />
                   </TabsContent>
                 ))}
               </Tabs>

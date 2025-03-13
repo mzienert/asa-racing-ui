@@ -234,10 +234,8 @@ const BracketRace = ({
     const isSelected = selectedRacers.includes(racerId);
 
     // Special case for Race 3 when it has only 2 racers
-    const isRaceThreeWithTwoRacers = 
-      race.raceNumber === 3 && 
-      race.bracketType === 'winners' && 
-      validRacers.length === 2;
+    const isRaceThreeWithTwoRacers =
+      race.raceNumber === 3 && race.bracketType === 'winners' && validRacers.length === 2;
 
     if (isRaceThreeWithTwoRacers) {
       if (isSelected) {
@@ -649,10 +647,8 @@ const BracketRace = ({
     }
 
     // Special case for Race 3 with only 2 racers
-    const isRaceThreeWithTwoRacers = 
-      race.raceNumber === 3 && 
-      race.bracketType === 'winners' && 
-      validRacers.length === 2;
+    const isRaceThreeWithTwoRacers =
+      race.raceNumber === 3 && race.bracketType === 'winners' && validRacers.length === 2;
 
     // Validate selected racers count based on race type
     const isValid =
@@ -679,7 +675,7 @@ const BracketRace = ({
       isSixRacersRace3,
       validRacersLength: validRacers.length,
       selectedRacersLength: selectedRacers.length,
-      isRaceThreeWithTwoRacers
+      isRaceThreeWithTwoRacers,
     });
 
     if (!isValid) {
@@ -754,14 +750,21 @@ const BracketRace = ({
         race.status === 'in_progress' && 'border-yellow-500',
         (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) && 'border-red-500',
         isFirstRoundTwoRacersDQorDNS && 'border-purple-500',
-        allRacersDisqualifiedOrDNS && !isFirstRoundAllDQorDNS && !isSecondRaceAllDQorDNS && 'border-yellow-700',
-        ((totalRacers >= 6 && totalRacers <= 9) &&
+        allRacersDisqualifiedOrDNS &&
+          !isFirstRoundAllDQorDNS &&
+          !isSecondRaceAllDQorDNS &&
+          'border-yellow-700',
+        totalRacers >= 6 &&
+          totalRacers <= 9 &&
           (race.raceNumber === 1 || race.raceNumber === 2) &&
           race.bracketType === 'winners' &&
           round === 1 &&
           validRacers.filter(
-            racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
-          ).length === validRacers.length - 1) && 'border-orange-500'
+            racer =>
+              race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+          ).length ===
+            validRacers.length - 1 &&
+          'border-orange-500'
       )}
       style={{
         marginTop: `${race.position * 10}px`,
@@ -839,12 +842,12 @@ const BracketRace = ({
           )}
       </div>
       <div className="match-pair space-y-2">
-        {validRacers.map(racer => {
+        {validRacers.map((racer, index) => {
           const isDisqualified = race.disqualifiedRacers?.includes(racer.id);
           const isDNS = race.dnsRacers?.includes(racer.id);
 
           return (
-            <div key={racer.id} className="flex gap-2">
+            <div key={`${race.raceNumber}-${racer.id}-${index}`} className="flex gap-2">
               <Button
                 variant={isSelected(racer.id) ? 'default' : 'ghost'}
                 disabled={
