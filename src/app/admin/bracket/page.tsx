@@ -26,7 +26,7 @@ import {
 } from '@/store/selectors/raceSelectors';
 import { AppDispatch } from '@/store/store';
 import { Users, Trophy, Ban, Hash, Flag, XCircle } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectRaceClassesByRaceId, selectRacersByRaceId } from '@/store/selectors/raceSelectors';
 import { RootState } from '@/store/store';
@@ -130,14 +130,30 @@ const BracketRace = ({
     ).length === 2;
 
   // Special case flags
-  const isFirstRoundAllDQorDNS =
-    round === 1 && race.bracketType === 'winners' && allRacersDisqualifiedOrDNS;
-  const isSecondRaceAllDQorDNS =
-    totalRacers === 6 &&
-    round === 1 &&
-    race.raceNumber === 2 &&
-    race.bracketType === 'winners' &&
-    allRacersDisqualifiedOrDNS;
+  const isFirstRoundAllDQorDNS = useMemo(() => {
+    return (
+      race.bracketType === 'winners' &&
+      round === 1 &&
+      validRacers.length > 0 &&
+      validRacers.filter(
+        racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+      ).length === validRacers.length
+    );
+  }, [race.bracketType, race.disqualifiedRacers, race.dnsRacers, round, validRacers]);
+
+  // Remove the unused variable
+  const isSecondRaceAllDQorDNS = useMemo(() => {
+    return (
+      race.bracketType === 'winners' &&
+      round === 2 &&
+      validRacers.length > 0 &&
+      validRacers.filter(
+        racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
+      ).length === validRacers.length
+    );
+  }, [race.bracketType, race.disqualifiedRacers, race.dnsRacers, round, validRacers]);
+
+  // Special case flags
   const isFirstRoundTwoRacersDQorDNS =
     totalRacers === 6 && round === 1 && race.bracketType === 'winners' && twoRacersDQorDNS;
   const isSixRacersRace3 =
@@ -517,9 +533,8 @@ const BracketRace = ({
     const totalRacers = brackets
       .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
       .flatMap(b => b.races)
-      .flatMap(r => r.racers)
-      .length;
-    
+      .flatMap(r => r.racers).length;
+
     return totalRacers === 9;
   };
 
@@ -529,9 +544,8 @@ const BracketRace = ({
     const totalRacers = brackets
       .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
       .flatMap(b => b.races)
-      .flatMap(r => r.racers)
-      .length;
-    
+      .flatMap(r => r.racers).length;
+
     return totalRacers === 12;
   };
 
@@ -539,17 +553,21 @@ const BracketRace = ({
   const isSpecialRace = () => {
     if (isNineRacersSpecialCase()) {
       // For 9 racers, race 4 (winners round 2) and race 7 (second chance round 2) are special
-      return (race.raceNumber === 4 && race.bracketType === 'winners') || 
-             (race.raceNumber === 7 && race.bracketType === 'losers');
+      return (
+        (race.raceNumber === 4 && race.bracketType === 'winners') ||
+        (race.raceNumber === 7 && race.bracketType === 'losers')
+      );
     }
-    
+
     if (isTwelveRacersSpecialCase()) {
       // For 12 racers, races 4 and 5 (second round) need special handling
-      return (race.raceNumber === 4 || race.raceNumber === 5) && 
-             race.bracketType === 'winners' && 
-             round === 2;
+      return (
+        (race.raceNumber === 4 || race.raceNumber === 5) &&
+        race.bracketType === 'winners' &&
+        round === 2
+      );
     }
-    
+
     return false;
   };
 
@@ -559,7 +577,7 @@ const BracketRace = ({
       bracketType: race.bracketType,
       round,
       selectedRacers,
-      validRacers: race.racers
+      validRacers: race.racers,
     });
 
     // Special handling for races where all racers are DQ'd or DNS
@@ -573,7 +591,8 @@ const BracketRace = ({
 
     // Special handling for first round races where all but one racer is DQ'd or DNS'd
     if (
-      (totalRacers >= 6 && totalRacers <= 9) &&
+      totalRacers >= 6 &&
+      totalRacers <= 9 &&
       (race.raceNumber === 1 || race.raceNumber === 2) &&
       race.bracketType === 'winners' &&
       round === 1
@@ -581,10 +600,10 @@ const BracketRace = ({
       const dqDnsRacers = validRacers.filter(
         racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
       );
-      
+
       console.log('Checking DQ/DNS status:', {
         totalDQDNS: dqDnsRacers.length,
-        validRacersCount: validRacers.length
+        validRacersCount: validRacers.length,
       });
 
       // Check if all but one racer is DQ'd or DNS'd
@@ -592,9 +611,10 @@ const BracketRace = ({
         console.log('All but one racer is DQ/DNS');
         // Get the single remaining racer
         const remainingRacer = validRacers.find(
-          racer => !race.disqualifiedRacers?.includes(racer.id) && !race.dnsRacers?.includes(racer.id)
+          racer =>
+            !race.disqualifiedRacers?.includes(racer.id) && !race.dnsRacers?.includes(racer.id)
         );
-        
+
         if (remainingRacer) {
           console.log('Moving remaining racer to winners:', remainingRacer.name);
           // Move the remaining racer to winners and all others to losers
@@ -635,7 +655,7 @@ const BracketRace = ({
       isValid,
       isSixRacersRace3,
       validRacersLength: validRacers.length,
-      selectedRacersLength: selectedRacers.length
+      selectedRacersLength: selectedRacers.length,
     });
 
     if (!isValid) {
@@ -648,7 +668,7 @@ const BracketRace = ({
 
     console.log('Completing race with:', {
       winners,
-      losers
+      losers,
     });
 
     // Call onWinnerSelect with the complete race information
@@ -662,15 +682,19 @@ const BracketRace = ({
       // For race 4 in 9 racers scenario, ensure winners go directly to finals
       console.log('Special case: 9 racers, race 4 winners going directly to finals');
     }
-    
+
     if (isNineRacersSpecialCase() && race.raceNumber === 5 && race.bracketType === 'losers') {
       // For race 5 in 9 racers scenario, ensure winners go to race 7
       console.log('Special case: 9 racers, race 5 winners going to race 7');
     }
-    
+
     // Add special case handling for 12 racers scenario
-    if (isTwelveRacersSpecialCase() && (race.raceNumber === 4 || race.raceNumber === 5) && 
-        race.bracketType === 'winners' && round === 2) {
+    if (
+      isTwelveRacersSpecialCase() &&
+      (race.raceNumber === 4 || race.raceNumber === 5) &&
+      race.bracketType === 'winners' &&
+      round === 2
+    ) {
       // For races 4 and 5 in 12 racers scenario, ensure exactly 3 racers per race
       console.log(`Special case: 12 racers, race ${race.raceNumber} should have exactly 3 racers`);
     }
@@ -698,6 +722,8 @@ const BracketRace = ({
         race.status === 'completed' && 'border-green-500',
         race.status === 'in_progress' && 'border-yellow-500',
         (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) && 'border-red-500',
+        isFirstRoundTwoRacersDQorDNS && 'border-purple-500',
+        allRacersDisqualifiedOrDNS && !isFirstRoundAllDQorDNS && !isSecondRaceAllDQorDNS && 'border-yellow-700',
         ((totalRacers >= 6 && totalRacers <= 9) &&
           (race.raceNumber === 1 || race.raceNumber === 2) &&
           race.bracketType === 'winners' &&
@@ -733,29 +759,30 @@ const BracketRace = ({
             {isNineRacersSecondChanceFirstRound && ' (Select Two Winners)'}
             {isNineRacersSecondChanceSecondRound && ' (Select One Winner)'}
             {isSpecialRace() && (
-              <span className="ml-1 text-xs text-amber-500 font-normal">
-                (Special Case)
-              </span>
+              <span className="ml-1 text-xs text-amber-500 font-normal">(Special Case)</span>
             )}
           </span>
         </div>
         {((selectedRacers.length > 0 && !isFirstRoundAllDQorDNS && !isSecondRaceAllDQorDNS) ||
           (isFirstRoundAllDQorDNS && validRacers.length > 0) ||
           (isSecondRaceAllDQorDNS && validRacers.length > 0) ||
-          ((totalRacers >= 6 && totalRacers <= 9) &&
+          (totalRacers >= 6 &&
+            totalRacers <= 9 &&
             (race.raceNumber === 1 || race.raceNumber === 2) &&
             race.bracketType === 'winners' &&
             round === 1 &&
             validRacers.filter(
               racer =>
                 race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
-            ).length === validRacers.length - 1)) &&
+            ).length ===
+              validRacers.length - 1)) &&
           race.status !== 'completed' && (
             <Button
               variant={
                 isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS
                   ? 'destructive'
-                  : ((totalRacers >= 6 && totalRacers <= 9) &&
+                  : totalRacers >= 6 &&
+                      totalRacers <= 9 &&
                       (race.raceNumber === 1 || race.raceNumber === 2) &&
                       race.bracketType === 'winners' &&
                       round === 1 &&
@@ -763,7 +790,8 @@ const BracketRace = ({
                         racer =>
                           race.disqualifiedRacers?.includes(racer.id) ||
                           race.dnsRacers?.includes(racer.id)
-                      ).length === validRacers.length - 1)
+                      ).length ===
+                        validRacers.length - 1
                     ? 'destructive'
                     : 'outline'
               }
@@ -1036,7 +1064,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
       bracketType,
       selectedWinners,
       selectedLosers,
-      totalRacers: classRacers.length
+      totalRacers: classRacers.length,
     });
 
     try {
@@ -1078,23 +1106,24 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     const totalRacers = brackets
       .filter(b => b.roundNumber === 1 && b.bracketType === 'winners')
       .flatMap(b => b.races)
-      .flatMap(r => r.racers)
-      .length;
-      
+      .flatMap(r => r.racers).length;
+
     if (totalRacers === 9) {
-      console.log(`Special case handling for 9 racers, race ${raceNumber}, round ${round}, bracket ${bracketType}`);
-      
+      console.log(
+        `Special case handling for 9 racers, race ${raceNumber}, round ${round}, bracket ${bracketType}`
+      );
+
       // For race 4 in 9 racers scenario, ensure winners go directly to finals
       if (raceNumber === 4 && bracketType === 'winners') {
         console.log('9 racers special case: Race 4 winners going directly to finals');
       }
-      
+
       // For race 5 in 9 racers scenario, ensure winners go to race 7
       if (raceNumber === 5 && bracketType === 'losers') {
         console.log('9 racers special case: Race 5 winners going to race 7');
       }
     }
-    
+
     // Add special case handling for 12 racers scenario
     if (totalRacers === 12) {
       if ((raceNumber === 4 || raceNumber === 5) && bracketType === 'winners' && round === 2) {
