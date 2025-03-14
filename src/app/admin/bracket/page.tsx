@@ -1195,7 +1195,7 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
             {secondChanceRounds.map((round, roundIndex) => (
               <div key={roundIndex}>
                 <h4 className="text-sm font-medium mb-2">
-                  {round.roundNumber === 1 ? 'First Round (Race 4)' : `Round ${round.roundNumber}`}
+                  {round.roundNumber === 1 ? 'First Round' : `Round ${round.roundNumber}`}
                 </h4>
                 {round.races.map(race => (
                   <BracketRace
