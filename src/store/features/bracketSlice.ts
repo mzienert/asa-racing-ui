@@ -895,7 +895,7 @@ export const populateNextRoundRaces = (
   bracketType: 'winners' | 'losers' | 'final'
 ): BracketRound[] => {
   // Deep clone the rounds to avoid mutating the original
-  let updatedRounds = JSON.parse(JSON.stringify(rounds));
+  const updatedRounds = JSON.parse(JSON.stringify(rounds));
 
   console.log(
     `POPULATING NEXT ROUND RACES: Round ${currentRound}, Race ${raceNumber}, Bracket ${bracketType}`
