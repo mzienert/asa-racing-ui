@@ -594,12 +594,12 @@ const BracketRace = ({
     // Special handling for finals
     if (race.bracketType === 'final') {
       console.log('🎯 Finals handling started');
-
+      
       // For finals, we need all racers to be ranked
       if (selectedRacers.length !== validRacers.length) {
         console.log('❌ Finals validation failed: not all racers ranked', {
           selectedRacers,
-          validRacers: validRacers.map(r => r.id),
+          validRacers: validRacers.map(r => r.id)
         });
         return;
       }
@@ -608,12 +608,85 @@ const BracketRace = ({
       const winners = selectedRacers.slice(0, -1);
       const losers = selectedRacers.slice(-1);
 
+      // If we have exactly 2 racers in finals, find the last loser from winners bracket for third place
+      if (validRacers.length === 2) {
+        console.log('Two racers in finals, finding last loser from winners bracket');
+        // Find the last completed race in winners bracket
+        const winnersRounds = brackets.filter(b => b.bracketType === 'winners');
+        let lastLoser: string | undefined;
+
+        // Sort rounds in reverse order to find the most recent loser
+        const sortedRounds = [...winnersRounds].sort((a, b) => b.roundNumber - a.roundNumber);
+        for (const round of sortedRounds) {
+          for (const bracketRace of round.races) {
+            if (bracketRace.status === 'completed' && bracketRace.losers?.length) {
+              lastLoser = bracketRace.losers[0];
+              console.log('Found last loser from winners bracket:', lastLoser);
+              break;
+            }
+          }
+          if (lastLoser) break;
+        }
+
+        // If we found a last loser, include them as third place in final rankings
+        if (lastLoser) {
+          console.log('Setting last loser as third place:', lastLoser);
+          if (onFinalRankings) {
+            onFinalRankings({
+              first: winners[0],
+              second: losers[0],
+              third: lastLoser,
+              fourth: validRacers.length > 3 ? lastLoser : '' // Only set fourth place if we have more than 3 racers
+            });
+            return;
+          }
+        }
+      }
+
       console.log('✅ Completing finals with:', {
         winners,
         losers,
         selectedRacers,
-        validRacers: validRacers.map(r => r.id),
+        validRacers: validRacers.map(r => r.id)
       });
+
+      onWinnerSelect(race.raceNumber, winners, losers);
+      return;
+    }
+
+    // Special case for 3 racers first round
+    const isThreeRacersFirstRound = totalRacers === 3 && round === 1 && race.bracketType === 'winners';
+    if (isThreeRacersFirstRound) {
+      console.log('Three racers first round detected');
+      if (selectedRacers.length !== 2) {
+        console.log('First round with 3 racers requires exactly two winners');
+        return;
+      }
+
+      const winners = selectedRacers;
+      const losers = validRacers
+        .filter(racer => !selectedRacers.includes(racer.id))
+        .map(racer => racer.id);
+
+      console.log('Completing first round with 3 racers:', {
+        winners,
+        losers,
+        totalRacers
+      });
+
+      // Find the finals race to get existing rankings
+      const finalsRound = brackets.find(r => r.bracketType === 'final');
+      if (finalsRound && finalsRound.races.length > 0 && losers.length === 1) {
+        // Use onFinalRankings to update the rankings
+        if (onFinalRankings && finalsRound.races[0].finalRankings?.first && finalsRound.races[0].finalRankings?.second) {
+          onFinalRankings({
+            first: finalsRound.races[0].finalRankings.first,
+            second: finalsRound.races[0].finalRankings.second,
+            third: losers[0],
+            fourth: validRacers.length > 3 ? losers[0] : '' // Only set fourth place if we have more than 3 racers
+          });
+        }
+      }
 
       onWinnerSelect(race.raceNumber, winners, losers);
       return;
