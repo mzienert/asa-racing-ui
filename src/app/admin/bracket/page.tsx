@@ -583,268 +583,100 @@ const BracketRace = ({
   };
 
   const handleCompleteRace = () => {
-    console.log('🚀 handleCompleteRace called for race:', {
-      raceNumber: race.raceNumber,
-      bracketType: race.bracketType,
-      round,
-      selectedRacers,
-      validRacers: race.racers,
-    });
+    // Get valid racers (not DQ'd or DNS)
+    const validRacers = race.racers.filter(
+      racer => 
+        !race.disqualifiedRacers?.includes(racer.id) && 
+        !race.dnsRacers?.includes(racer.id)
+    );
 
-    // Special handling for finals
-    if (race.bracketType === 'final') {
-      console.log('🎯 Finals handling started');
-      
-      // For finals, we need all racers to be ranked
-      if (selectedRacers.length !== validRacers.length) {
-        console.log('❌ Finals validation failed: not all racers ranked', {
-          selectedRacers,
-          validRacers: validRacers.map(r => r.id)
-        });
-        return;
-      }
-
-      // For finals, all selected racers except the last are winners
-      const winners = selectedRacers.slice(0, -1);
-      const losers = selectedRacers.slice(-1);
-
-      // If we have exactly 2 racers in finals, find the last loser from winners bracket for third place
-      if (validRacers.length === 2) {
-        console.log('Two racers in finals, finding last loser from winners bracket');
-        // Find the last completed race in winners bracket
-        const winnersRounds = brackets.filter(b => b.bracketType === 'winners');
-        let lastLoser: string | undefined;
-
-        // Sort rounds in reverse order to find the most recent loser
-        const sortedRounds = [...winnersRounds].sort((a, b) => b.roundNumber - a.roundNumber);
-        for (const round of sortedRounds) {
-          for (const bracketRace of round.races) {
-            if (bracketRace.status === 'completed' && bracketRace.losers?.length) {
-              lastLoser = bracketRace.losers[0];
-              console.log('Found last loser from winners bracket:', lastLoser);
-              break;
-            }
-          }
-          if (lastLoser) break;
-        }
-
-        // If we found a last loser, include them as third place in final rankings
-        if (lastLoser) {
-          console.log('Setting last loser as third place:', lastLoser);
-          if (onFinalRankings) {
-            onFinalRankings({
-              first: winners[0],
-              second: losers[0],
-              third: lastLoser,
-              fourth: validRacers.length > 3 ? lastLoser : '' // Only set fourth place if we have more than 3 racers
-            });
-            return;
-          }
-        }
-      }
-
-      console.log('✅ Completing finals with:', {
-        winners,
-        losers,
-        selectedRacers,
-        validRacers: validRacers.map(r => r.id)
-      });
-
-      onWinnerSelect(race.raceNumber, winners, losers);
-      return;
-    }
-
-    // Special case for 3 racers first round
-    const isThreeRacersFirstRound = totalRacers === 3 && round === 1 && race.bracketType === 'winners';
-    if (isThreeRacersFirstRound) {
-      console.log('Three racers first round detected');
-      if (selectedRacers.length !== 2) {
-        console.log('First round with 3 racers requires exactly two winners');
-        return;
-      }
-
-      const winners = selectedRacers;
-      const losers = validRacers
-        .filter(racer => !selectedRacers.includes(racer.id))
-        .map(racer => racer.id);
-
-      console.log('Completing first round with 3 racers:', {
-        winners,
-        losers,
-        totalRacers
-      });
-
-      // Find the finals race to get existing rankings
-      const finalsRound = brackets.find(r => r.bracketType === 'final');
-      if (finalsRound && finalsRound.races.length > 0 && losers.length === 1) {
-        // Use onFinalRankings to update the rankings
-        if (onFinalRankings && finalsRound.races[0].finalRankings?.first && finalsRound.races[0].finalRankings?.second) {
-          onFinalRankings({
-            first: finalsRound.races[0].finalRankings.first,
-            second: finalsRound.races[0].finalRankings.second,
-            third: losers[0],
-            fourth: validRacers.length > 3 ? losers[0] : '' // Only set fourth place if we have more than 3 racers
-          });
-        }
-      }
-
-      onWinnerSelect(race.raceNumber, winners, losers);
-      return;
-    }
-
-    // Special handling for races where all racers are DQ'd or DNS
-    if (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) {
-      console.log('All racers DQ/DNS case detected');
-      // Get remaining racers that aren't in winners array
-      const remainingRacers = validRacers.map(racer => racer.id);
-      onWinnerSelect(race.raceNumber, [], remainingRacers);
-      return;
-    }
-
-    // Special case for first round race 2 with 2 racers
-    const isFirstRoundRaceTwo = round === 1 && race.raceNumber === 2 && validRacers.length === 2;
-    if (isFirstRoundRaceTwo) {
-      if (selectedRacers.length !== 1) {
-        console.log('First round race 2 requires exactly one winner');
-        return;
-      }
-      const winners = selectedRacers;
-      const losers = validRacers
-        .filter(racer => !selectedRacers.includes(racer.id))
-        .map(racer => racer.id);
-
-      console.log('Completing first round race 2 with:', {
-        winners,
-        losers,
-      });
-
-      onWinnerSelect(race.raceNumber, winners, losers);
-      return;
-    }
-
-    // Special handling for first round races where all but one racer is DQ'd or DNS'd
-    if (
-      totalRacers >= 6 &&
-      totalRacers <= 9 &&
-      (race.raceNumber === 1 || race.raceNumber === 2) &&
-      race.bracketType === 'winners' &&
-      round === 1
-    ) {
-      const dqDnsRacers = validRacers.filter(
-        racer => race.disqualifiedRacers?.includes(racer.id) || race.dnsRacers?.includes(racer.id)
-      );
-
-      console.log('Checking DQ/DNS status:', {
-        totalDQDNS: dqDnsRacers.length,
-        validRacersCount: validRacers.length,
-      });
-
-      // Check if all but one racer is DQ'd or DNS'd
-      if (dqDnsRacers.length === validRacers.length - 1) {
-        console.log('All but one racer is DQ/DNS');
-        // Get the single remaining racer
-        const remainingRacer = validRacers.find(
-          racer =>
-            !race.disqualifiedRacers?.includes(racer.id) && !race.dnsRacers?.includes(racer.id)
-        );
-
-        if (remainingRacer) {
-          console.log('Moving remaining racer to winners:', remainingRacer.name);
-          // Move the remaining racer to winners and all others to losers
-          onWinnerSelect(
-            race.raceNumber,
-            [remainingRacer.id],
-            dqDnsRacers.map(racer => racer.id)
-          );
-          return;
-        }
-      }
-    }
-
-    if (selectedRacers.length === 0 && !isFirstRoundAllDQorDNS) {
-      console.log('No racers selected and not all DQ/DNS case');
-      return;
-    }
-
-    // Special case for Race 3 with only 2 racers
-    const isRaceThreeWithTwoRacers =
-      race.raceNumber === 3 && race.bracketType === 'winners' && validRacers.length === 2;
-
-    // Validate selected racers count based on race type
-    const isValid =
-      (isRaceThreeWithTwoRacers && selectedRacers.length === 1) ||
-      (isSixRacersRace3 &&
-        ((validRacers.length === 2 && selectedRacers.length === 1) ||
-          (validRacers.length > 2 && selectedRacers.length === 2))) ||
-      (isNineRacersSecondRound && selectedRacers.length === 2) ||
-      (isNineRacersThirdRound && selectedRacers.length === 2) ||
-      (isSixRacersRace4 && selectedRacers.length === 1) ||
-      (isSevenRacersRace4 && selectedRacers.length === 2) ||
-      ((isSevenRacersRace5 || (isSecondChanceTwoRacers && !isSevenRacersRace4)) &&
-        selectedRacers.length === 1) ||
-      (!isSixRacersRace3 &&
-        !isSixRacersRace4 &&
-        !isSevenRacersRace4 &&
-        !isSevenRacersRace5 &&
-        !isSecondChanceTwoRacers &&
-        !isRaceThreeWithTwoRacers &&
-        selectedRacers.length === 2);
-
-    console.log('Race completion validation:', {
-      isValid,
-      isSixRacersRace3,
+    const validation = {
+      isValid: false,
       validRacersLength: validRacers.length,
       selectedRacersLength: selectedRacers.length,
-      isRaceThreeWithTwoRacers,
-    });
+      isSecondChanceRace: race.bracketType === 'losers',
+      isSecondChanceFinalsRace: race.bracketType === 'losers' && race.round === 2,
+      hasDisqualifiedOrDNS: (race.disqualifiedRacers?.length || 0) + (race.dnsRacers?.length || 0) > 0,
+      isFinals: race.bracketType === 'final',
+      isTwoPersonFinals: race.bracketType === 'final' && race.racers.length === 2
+    };
 
-    if (!isValid) {
+    // First round with DQ/DNS racers - only need one winner
+    if (race.round === 1 && race.bracketType === 'winners' && validation.hasDisqualifiedOrDNS) {
+      validation.isValid = selectedRacers.length === 1;
+    }
+    // Second chance first race (Race 2) - need two winners from DQ/DNS racers
+    else if (race.round === 1 && race.bracketType === 'losers' && race.racers.length >= 3) {
+      validation.isValid = selectedRacers.length === 2;
+    }
+    // Second chance finals (Race 4) - need one winner to go to finals
+    else if (race.round === 2 && race.bracketType === 'losers') {
+      validation.isValid = selectedRacers.length === 1;
+      
+      // Ensure the loser gets third place
+      if (validation.isValid) {
+        const loser = validRacers.find(racer => !selectedRacers.includes(racer.id));
+        if (loser) {
+          // Find the finals race
+          const finalsRound = brackets.find(r => r.bracketType === 'final');
+          if (finalsRound && finalsRound.races.length > 0) {
+            const finalsRace = finalsRound.races[0];
+            // Store third place in a temporary object
+            const tempRankings = {
+              ...(finalsRace.finalRankings || {}),
+              third: loser.id
+            };
+            // Only update if we have all required rankings
+            if (tempRankings.first && tempRankings.second) {
+              dispatch(
+                updateFinalRankings({
+                  raceId: race.raceId,
+                  raceClass: race.raceClass,
+                  rankings: {
+                    first: tempRankings.first,
+                    second: tempRankings.second,
+                    third: tempRankings.third,
+                    fourth: tempRankings.fourth || tempRankings.third
+                  }
+                })
+              );
+            }
+          }
+        }
+      }
+    }
+    // Two person finals - need both winner and loser for rankings
+    else if (validation.isTwoPersonFinals) {
+      validation.isValid = selectedRacers.length === 2;
+    }
+    // Normal race validation
+    else {
+      validation.isValid = selectedRacers.length === 2;
+    }
+
+    console.log('Race completion validation:', validation);
+
+    if (!validation.isValid) {
       console.log('Invalid race completion state');
       return;
     }
 
-    const winners = selectedRacers;
-    const losers = validRacers.filter(racer => !winners.includes(racer.id)).map(racer => racer.id);
+    // Create winners and losers arrays
+    let winners = selectedRacers;
+    let losers = validRacers
+      .filter(racer => !selectedRacers.includes(racer.id))
+      .map(racer => racer.id);
 
-    console.log('Completing race with:', {
-      winners,
-      losers,
-    });
-
-    // Special case for Race 3 with only 2 racers - winner goes directly to finals
-    if (isRaceThreeWithTwoRacers) {
-      console.log('Race 3 with 2 racers - winner going directly to finals');
-      // The winner should go to the finals (Race 7)
-      race.nextWinnerRace = 7;
+    // For two person finals, first selected is winner, second is second place
+    if (validation.isTwoPersonFinals) {
+      winners = [selectedRacers[0]];
+      losers = [selectedRacers[1]];
     }
 
-    // Call onWinnerSelect with the complete race information
+    console.log('Completing race with:', { winners, losers });
+
+    // Call the winner selection handler
     onWinnerSelect(race.raceNumber, winners, losers);
-
-    // Reset selected racers after completion
-    setSelectedRacers([]);
-
-    // Add special case handling for 9 racers scenario
-    if (isNineRacersSpecialCase() && race.raceNumber === 4 && race.bracketType === 'winners') {
-      // For race 4 in 9 racers scenario, ensure winners go directly to finals
-      console.log('Special case: 9 racers, race 4 winners going directly to finals');
-    }
-
-    if (isNineRacersSpecialCase() && race.raceNumber === 5 && race.bracketType === 'losers') {
-      // For race 5 in 9 racers scenario, ensure winners go to race 7
-      console.log('Special case: 9 racers, race 5 winners going to race 7');
-    }
-
-    // Add special case handling for 12 racers scenario
-    if (
-      isTwelveRacersSpecialCase() &&
-      (race.raceNumber === 4 || race.raceNumber === 5) &&
-      race.bracketType === 'winners' &&
-      round === 2
-    ) {
-      // For races 4 and 5 in 12 racers scenario, ensure exactly 3 racers per race
-      console.log(`Special case: 12 racers, race ${race.raceNumber} should have exactly 3 racers`);
-    }
   };
 
   // Add helper to determine if we have a second round of second chance
@@ -1344,126 +1176,79 @@ const BracketContent = ({ race, selectedClass }: BracketContentProps) => {
     <Card className="p-4">
       <h3 className="text-lg font-semibold mb-4">{raceClass.raceClass}</h3>
       <div className="bracket-container overflow-x-auto">
-        <div className="flex gap-16 min-w-[1200px] relative">
-          {/* Winners Bracket Column */}
-          <div className="flex-1">
-            <h4 className="text-sm font-medium mb-4 text-green-600">Winners Bracket</h4>
-            <div className="space-y-12">
-              {winnersBrackets.map((round: BracketRound) => (
-                <div key={`${round.roundNumber}-${round.bracketType}`} className="bracket-round">
-                  <h5 className="text-sm font-medium mb-2">Round {round.roundNumber}</h5>
-                  <div className="space-y-8">
-                    {round.races.map((bracketRace: BracketRace) => (
-                      <BracketRace
-                        key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                        race={{
-                          ...bracketRace,
-                          raceId: race.id,
-                          raceClass: raceClass.raceClass,
-                        }}
-                        round={round.roundNumber}
-                        brackets={brackets}
-                        onWinnerSelect={(raceNumber, winners, losers) =>
-                          handleWinnerSelect(
-                            raceClass.raceClass,
-                            raceNumber,
-                            round.roundNumber,
-                            round.bracketType,
-                            winners,
-                            losers
-                          )
-                        }
-                        winners={getWinnersForRace(
-                          raceClass.raceClass,
-                          bracketRace.raceNumber,
-                          round.roundNumber,
-                          round.bracketType,
-                          bracketRace.status
-                        )}
-                        onFinalRankings={
-                          round.bracketType === 'final'
-                            ? (rankings: {
-                                first: string;
-                                second: string;
-                                third: string;
-                                fourth: string;
-                              }) => handleFinalRankings(raceClass.raceClass, rankings)
-                            : undefined
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="grid grid-cols-3 gap-4">
+          {/* Winners Bracket */}
+          <div>
+            <h3 className="text-lg font-semibold text-green-500 mb-4">Winners Bracket</h3>
+            {winnersBrackets.map((round, roundIndex) => (
+              <div key={roundIndex}>
+                <h4 className="text-sm font-medium mb-2">Round {round.roundNumber}</h4>
+                {round.races.map(race => (
+                  <BracketRace
+                    key={race.raceNumber}
+                    race={race}
+                    onWinnerSelect={(raceNumber, winners, losers) =>
+                      handleWinnerSelect(
+                        raceClass.raceClass,
+                        raceNumber,
+                        round.roundNumber,
+                        'winners',
+                        winners,
+                        losers,
+                        totalRacers
+                      )
+                    }
+                    winners={getWinnersForRace(
+                      raceClass.raceClass,
+                      race.raceNumber,
+                      round.roundNumber,
+                      'winners',
+                      race.status
+                    )}
+                    round={round.roundNumber}
+                    brackets={brackets}
+                  />
+                ))}
+              </div>
+            ))}
           </div>
 
-          {/* Second Chance Column */}
-          <div className="flex-1">
-            <h4 className="text-sm font-medium mb-4 text-yellow-600">Second Chance</h4>
-            <div className="space-y-12">
-              {secondChanceRounds.map((round: BracketRound) => {
-                // Only show rounds that should be visible
-                if (round.roundNumber === 2 && !needsSecondChanceSecondRound) {
-                  return null;
-                }
-
-                return (
-                  <div key={`${round.roundNumber}-${round.bracketType}`} className="bracket-round">
-                    <h5 className="text-sm font-medium mb-2">
-                      {totalRacers === 9
-                        ? round.roundNumber === 1
-                          ? 'First Round (Race 5)'
-                          : 'Second Round (Race 7)'
-                        : round.roundNumber === 1
-                          ? 'First Round (Race 4)'
-                          : 'Second Round (Race 5)'}
-                    </h5>
-                    <div className="space-y-8">
-                      {round.races.map((bracketRace: BracketRace) => (
-                        <BracketRace
-                          key={`${bracketRace.raceNumber}-${round.bracketType}`}
-                          race={{
-                            ...bracketRace,
-                            raceId: race.id,
-                            raceClass: raceClass.raceClass,
-                          }}
-                          round={round.roundNumber}
-                          brackets={brackets}
-                          onWinnerSelect={(raceNumber, winners, losers) =>
-                            handleWinnerSelect(
-                              raceClass.raceClass,
-                              raceNumber,
-                              round.roundNumber,
-                              'losers',
-                              winners,
-                              losers
-                            )
-                          }
-                          winners={getWinnersForRace(
-                            raceClass.raceClass,
-                            bracketRace.raceNumber,
-                            round.roundNumber,
-                            'losers',
-                            bracketRace.status
-                          )}
-                          onFinalRankings={
-                            round.bracketType === 'final'
-                              ? (rankings: {
-                                  first: string;
-                                  second: string;
-                                  third: string;
-                                  fourth: string;
-                                }) => handleFinalRankings(raceClass.raceClass, rankings)
-                              : undefined
-                          }
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {/* Second Chance Bracket */}
+          <div>
+            <h3 className="text-lg font-semibold text-orange-500 mb-4">Second Chance</h3>
+            {secondChanceRounds.map((round, roundIndex) => (
+              <div key={roundIndex}>
+                <h4 className="text-sm font-medium mb-2">
+                  {round.roundNumber === 1 ? 'First Round (Race 2)' : `Round ${round.roundNumber}`}
+                </h4>
+                {round.races.map(race => (
+                  <BracketRace
+                    key={race.raceNumber}
+                    race={race}
+                    onWinnerSelect={(raceNumber, winners, losers) =>
+                      handleWinnerSelect(
+                        raceClass.raceClass,
+                        raceNumber,
+                        round.roundNumber,
+                        'losers',
+                        winners,
+                        losers,
+                        totalRacers
+                      )
+                    }
+                    winners={getWinnersForRace(
+                      raceClass.raceClass,
+                      race.raceNumber,
+                      round.roundNumber,
+                      'losers',
+                      race.status
+                    )}
+                    round={round.roundNumber}
+                    brackets={brackets}
+                  />
+                ))}
+              </div>
+            ))}
           </div>
 
           {/* Finals Column */}

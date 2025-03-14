@@ -102,30 +102,29 @@ interface ResultsContentProps {
 const findThirdPlaceFinisher = (brackets: BracketRound[]): string | undefined => {
   console.log('Finding third place finisher...');
 
-  // Look specifically for race 3 in the winners bracket
-  const winnersRounds = brackets.filter(round => round.bracketType === 'winners');
-  console.log('Winners rounds:', winnersRounds);
+  // Look for Race 4 in the second chance bracket (second round)
+  const secondChanceRounds = brackets.filter(round => round.bracketType === 'losers' && round.roundNumber === 2);
+  console.log('Second chance finals round:', secondChanceRounds);
 
-  // Find race 3 specifically
-  for (const round of winnersRounds) {
-    const race3 = round.races.find(race => race.raceNumber === 3);
-    if (race3) {
-      console.log('Found race 3:', {
-        raceNumber: race3.raceNumber,
-        winners: race3.winners,
-        losers: race3.losers,
+  // Find race 4 specifically
+  for (const round of secondChanceRounds) {
+    const race4 = round.races.find(race => race.raceNumber === 4);
+    if (race4) {
+      console.log('Found race 4:', {
+        raceNumber: race4.raceNumber,
+        winners: race4.winners,
+        losers: race4.losers,
       });
 
-      if (race3.losers && race3.losers.length > 0) {
-        console.log('Found third place from race 3:', race3.losers[0]);
-        return race3.losers[0];
+      if (race4.losers && race4.losers.length > 0) {
+        console.log('Found third place from race 4:', race4.losers[0]);
+        return race4.losers[0];
       }
     }
   }
 
-  // If for some reason race 3 isn't found or doesn't have a loser (shouldn't happen),
-  // log the error and return undefined
-  console.log('No third place finisher found - race 3 not found or no loser');
+  // If race 4 isn't found or doesn't have a loser, log the error and return undefined
+  console.log('No third place finisher found - race 4 not found or no loser');
   return undefined;
 };
 
