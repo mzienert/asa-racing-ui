@@ -233,11 +233,9 @@ const BracketRace = ({
 
     const isSelected = selectedRacers.includes(racerId);
 
-    // Special case for Race 3 when it has only 2 racers
-    const isRaceThreeWithTwoRacers =
-      race.raceNumber === 3 && race.bracketType === 'winners' && validRacers.length === 2;
-
-    if (isRaceThreeWithTwoRacers) {
+    // Special case for first round second race with 2 racers
+    const isFirstRoundSecondRace = round === 1 && race.raceNumber === 2 && validRacers.length === 2;
+    if (isFirstRoundSecondRace) {
       if (isSelected) {
         setSelectedRacers(selectedRacers.filter(id => id !== racerId));
       } else if (selectedRacers.length < 1) {
@@ -585,7 +583,7 @@ const BracketRace = ({
   };
 
   const handleCompleteRace = () => {
-    console.log('handleCompleteRace called for race:', {
+    console.log('🚀 handleCompleteRace called for race:', {
       raceNumber: race.raceNumber,
       bracketType: race.bracketType,
       round,
@@ -593,12 +591,61 @@ const BracketRace = ({
       validRacers: race.racers,
     });
 
+    // Special handling for finals
+    if (race.bracketType === 'final') {
+      console.log('🎯 Finals handling started');
+
+      // For finals, we need all racers to be ranked
+      if (selectedRacers.length !== validRacers.length) {
+        console.log('❌ Finals validation failed: not all racers ranked', {
+          selectedRacers,
+          validRacers: validRacers.map(r => r.id),
+        });
+        return;
+      }
+
+      // For finals, all selected racers except the last are winners
+      const winners = selectedRacers.slice(0, -1);
+      const losers = selectedRacers.slice(-1);
+
+      console.log('✅ Completing finals with:', {
+        winners,
+        losers,
+        selectedRacers,
+        validRacers: validRacers.map(r => r.id),
+      });
+
+      onWinnerSelect(race.raceNumber, winners, losers);
+      return;
+    }
+
     // Special handling for races where all racers are DQ'd or DNS
     if (isFirstRoundAllDQorDNS || isSecondRaceAllDQorDNS) {
       console.log('All racers DQ/DNS case detected');
       // Get remaining racers that aren't in winners array
       const remainingRacers = validRacers.map(racer => racer.id);
       onWinnerSelect(race.raceNumber, [], remainingRacers);
+      return;
+    }
+
+    // Special case for first round race 2 with 2 racers
+    const isFirstRoundRaceTwo = round === 1 && race.raceNumber === 2 && validRacers.length === 2;
+    if (isFirstRoundRaceTwo) {
+      if (selectedRacers.length !== 1) {
+        console.log('First round race 2 requires exactly one winner');
+        return;
+      }
+      const winners = selectedRacers;
+      const losers = validRacers
+        .filter(racer => !selectedRacers.includes(racer.id))
+        .map(racer => racer.id);
+
+      console.log('Completing first round race 2 with:', {
+        winners,
+        losers,
+      });
+
+      onWinnerSelect(race.raceNumber, winners, losers);
       return;
     }
 
